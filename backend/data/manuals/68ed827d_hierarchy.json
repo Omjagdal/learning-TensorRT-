@@ -1,0 +1,1067 @@
+{
+  "chapters": [
+    {
+      "title": "Title",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            1
+          ],
+          "chunk_count": 1
+        }
+      ]
+    },
+    {
+      "title": "Contents",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "chunk_count": 26
+        }
+      ]
+    },
+    {
+      "title": "1 Foreword",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            7
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "1.1 Safety notes",
+          "pages": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "chunk_count": 22
+        },
+        {
+          "title": "1.2 Copyright",
+          "pages": [
+            15
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "1.3 Disclaimer",
+          "pages": [
+            16,
+            17
+          ],
+          "chunk_count": 10
+        }
+      ]
+    },
+    {
+      "title": "2 Introduction",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            18
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "2.1 Short description \u2013 Technical requirements",
+          "pages": [
+            19,
+            20,
+            21
+          ],
+          "chunk_count": 11
+        },
+        {
+          "title": "2.2 Layout of Operating Manual",
+          "pages": [
+            22
+          ],
+          "chunk_count": 2
+        },
+        {
+          "title": "2.3 Using the online help",
+          "pages": [
+            23
+          ],
+          "chunk_count": 4
+        }
+      ]
+    },
+    {
+      "title": "3 Function overview",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            24
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "3.1 Function overview",
+          "pages": [
+            25,
+            26
+          ],
+          "chunk_count": 9
+        },
+        {
+          "title": "3.2 Module views",
+          "pages": [
+            27,
+            28,
+            29,
+            30,
+            31
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "3.3 Automatic mode (Server)",
+          "pages": [
+            32
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "3.4 Configuration mode (Client)",
+          "pages": [
+            33
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "3.5 Starting and exiting the application",
+          "pages": [
+            34
+          ],
+          "chunk_count": 4
+        },
+        {
+          "title": "3.6 Switching between automatic mode and configuration mode",
+          "pages": [
+            35
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "3.7 Directory structure / files",
+          "pages": [
+            36,
+            37
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "3.8 Application structure",
+          "pages": [
+            38,
+            39,
+            40,
+            41
+          ],
+          "chunk_count": 12
+        },
+        {
+          "title": "3.9 Image structure / image sequences",
+          "pages": [
+            42,
+            43
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "3.10 Inspecting the glue bead \u2013 Methodology",
+          "pages": [
+            44
+          ],
+          "chunk_count": 4
+        }
+      ]
+    },
+    {
+      "title": "4 Configuration mode description",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            45
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "4.1 General information about configuration mode (Client)",
+          "pages": [
+            46,
+            47,
+            48
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "4.2 Client screen view",
+          "pages": [
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56
+          ],
+          "chunk_count": 26
+        },
+        {
+          "title": "4.3.1 Control elements for products",
+          "pages": [
+            57,
+            58,
+            59
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.3.2 Loading and navigating image sequences",
+          "pages": [
+            60,
+            61
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.3.3 Configuring the product image and bead paths",
+          "pages": [
+            62,
+            63,
+            64,
+            65,
+            66
+          ],
+          "chunk_count": 11
+        },
+        {
+          "title": "4.4.1 General",
+          "pages": [
+            67
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "4.4.2 Control elements",
+          "pages": [
+            68,
+            69,
+            70
+          ],
+          "chunk_count": 9
+        },
+        {
+          "title": "4.4.3 Inspection settings",
+          "pages": [
+            71,
+            72,
+            73
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.4.4 Auxiliary tools",
+          "pages": [
+            74,
+            75
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.4.5 Run options",
+          "pages": [
+            76,
+            77,
+            78
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "4.4.6.1 General tab",
+          "pages": [
+            79,
+            80
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.4.6.2 Inspection length",
+          "pages": [
+            81
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.4.7.1 General information about exposures",
+          "pages": [
+            82,
+            83,
+            84
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.4.7.2 Settings for exposures",
+          "pages": [
+            85
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "4.4.8.1 General",
+          "pages": [
+            86,
+            87,
+            88
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.8.2.1 Standard method",
+          "pages": [
+            89,
+            90,
+            91
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.8.2.2 Areas context menu",
+          "pages": [
+            92,
+            93
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.8.2.3 Graphic display during inline glue inspection",
+          "pages": [
+            94
+          ],
+          "chunk_count": 2
+        },
+        {
+          "title": "4.4.8.2.4 Edge detection",
+          "pages": [
+            95,
+            96
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "4.4.8.2.5 Creating areas by means of a brightness analysis",
+          "pages": [
+            97
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.4.8.2.6 Additional method (Brightness analysis)",
+          "pages": [
+            98,
+            99,
+            100
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "4.4.8.2.7 Glue gap",
+          "pages": [
+            101
+          ],
+          "chunk_count": 4
+        },
+        {
+          "title": "4.4.8.3.1 General parameters",
+          "pages": [
+            102,
+            103,
+            104
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "4.4.8.3.2 Basic definitions",
+          "pages": [
+            105,
+            106,
+            107,
+            108
+          ],
+          "chunk_count": 13
+        },
+        {
+          "title": "4.4.8.3.4 Search parameters",
+          "pages": [
+            109,
+            110,
+            111,
+            112,
+            113
+          ],
+          "chunk_count": 12
+        },
+        {
+          "title": "4.4.8.3.5 Error definitions",
+          "pages": [
+            114
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.4.8.3.6 Profile",
+          "pages": [
+            115,
+            116
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.8.3.7 Identifying and correcting parameterization errors",
+          "pages": [
+            117,
+            118
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.4.8.4 Teaching in areas",
+          "pages": [
+            119,
+            120
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.4.9.1 General",
+          "pages": [
+            121,
+            122
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.4.9.2 Settings for references",
+          "pages": [
+            123
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.4.9.2.1 General parameters",
+          "pages": [
+            124,
+            125,
+            126
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "4.4.9.2.2 Creating a reference",
+          "pages": [
+            127
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.4.9.2.3 Primary reference",
+          "pages": [
+            128,
+            129
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.9.2.4 Additional reference with and without help reference",
+          "pages": [
+            130,
+            131
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.9.2.5 Creating distance checks (double references)",
+          "pages": [
+            132,
+            133
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "4.4.9.2.6 Error definitions",
+          "pages": [
+            134
+          ],
+          "chunk_count": 2
+        },
+        {
+          "title": "4.4.9.2.7 Special mode / synchronization",
+          "pages": [
+            135
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.4.9.3 Teaching in references",
+          "pages": [
+            136,
+            137
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.4.10 Contour detection",
+          "pages": [
+            138,
+            139,
+            140,
+            141
+          ],
+          "chunk_count": 9
+        },
+        {
+          "title": "4.5 Menu commands in configuration mode",
+          "pages": [
+            142,
+            143,
+            144,
+            145
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.6 Inconsistency check",
+          "pages": [
+            146
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "4.7 Global reparameterization",
+          "pages": [
+            147,
+            148
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.8 Sensor management",
+          "pages": [
+            149,
+            150
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "4.8.1 System variants",
+          "pages": [
+            151,
+            152,
+            153,
+            154
+          ],
+          "chunk_count": 14
+        },
+        {
+          "title": "4.8.2 RGB sensor settings",
+          "pages": [
+            155,
+            156
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "4.8.3 Sensor dialog",
+          "pages": [
+            157,
+            158
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "4.8.3.1 Calibration",
+          "pages": [
+            159
+          ],
+          "chunk_count": 4
+        },
+        {
+          "title": "4.8.3.2 Performing a calibration manually",
+          "pages": [
+            160,
+            161
+          ],
+          "chunk_count": 9
+        },
+        {
+          "title": "4.9 Default values",
+          "pages": [
+            162,
+            163,
+            164,
+            165,
+            166,
+            167,
+            168
+          ],
+          "chunk_count": 13
+        },
+        {
+          "title": "4.10 Switching language",
+          "pages": [
+            169
+          ],
+          "chunk_count": 1
+        }
+      ]
+    },
+    {
+      "title": "5 Automatic mode",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            170
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "5.1 Views",
+          "pages": [
+            171,
+            172,
+            173,
+            174
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "5.2 Control elements in automatic mode",
+          "pages": [
+            175,
+            176,
+            177
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "5.3 Result display in automatic mode",
+          "pages": [
+            178,
+            179,
+            180,
+            181,
+            182
+          ],
+          "chunk_count": 11
+        },
+        {
+          "title": "5.4 Menu commands in automatic mode",
+          "pages": [
+            183,
+            184,
+            185,
+            186,
+            187,
+            188,
+            189,
+            190
+          ],
+          "chunk_count": 13
+        },
+        {
+          "title": "5.5 Communication dialog",
+          "pages": [
+            191,
+            192,
+            193
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "5.6 Logbook, history and statistics",
+          "pages": [
+            194,
+            195,
+            196,
+            197,
+            198,
+            199
+          ],
+          "chunk_count": 11
+        },
+        {
+          "title": "5.7 Recording image sequences",
+          "pages": [
+            200,
+            201,
+            202
+          ],
+          "chunk_count": 7
+        },
+        {
+          "title": "5.8 Saving result data",
+          "pages": [
+            203,
+            204
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "5.9 User management",
+          "pages": [
+            205,
+            206,
+            207
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "5.10 Switching language",
+          "pages": [
+            208
+          ],
+          "chunk_count": 3
+        }
+      ]
+    },
+    {
+      "title": "6 Results evaluation",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            209
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "6.1 The viewer",
+          "pages": [
+            210,
+            211,
+            212
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "6.2 Detailed view",
+          "pages": [
+            213,
+            214
+          ],
+          "chunk_count": 5
+        }
+      ]
+    },
+    {
+      "title": "7 Communication",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            215
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "7.1 General",
+          "pages": [
+            216,
+            217
+          ],
+          "chunk_count": 4
+        },
+        {
+          "title": "7.2 Basic interface",
+          "pages": [
+            218
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "7.2.1 Incoming signals",
+          "pages": [
+            219
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "7.2.2 Outgoing signals",
+          "pages": [
+            220,
+            221
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "7.2.3 Programming the controller",
+          "pages": [
+            222,
+            223,
+            224,
+            225,
+            226,
+            227
+          ],
+          "chunk_count": 11
+        },
+        {
+          "title": "7.2.4 Flow chart",
+          "pages": [
+            228
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "7.2.5 Time chart",
+          "pages": [
+            229
+          ],
+          "chunk_count": 1
+        }
+      ]
+    },
+    {
+      "title": "8 Special specifications \u2013 optional",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            230,
+            231
+          ],
+          "chunk_count": 4
+        },
+        {
+          "title": "8.1 Target check: Configuration and workflow",
+          "pages": [
+            232,
+            233,
+            234,
+            235,
+            236,
+            237,
+            238
+          ],
+          "chunk_count": 26
+        },
+        {
+          "title": "8.2 Repair interface (licensed option)",
+          "pages": [
+            239,
+            240
+          ],
+          "chunk_count": 9
+        },
+        {
+          "title": "8.2.1 Defining the repair area",
+          "pages": [
+            241,
+            242
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "8.3 Interface extension",
+          "pages": [
+            243,
+            244,
+            245
+          ],
+          "chunk_count": 15
+        },
+        {
+          "title": "8.4 Communicating with the glue controller",
+          "pages": [
+            246,
+            247
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "8.5 Take over seam numbers",
+          "pages": [
+            248,
+            249
+          ],
+          "chunk_count": 5
+        },
+        {
+          "title": "8.6 Data transfer via MQTT",
+          "pages": [
+            250
+          ],
+          "chunk_count": 2
+        },
+        {
+          "title": "8.7 Additional unlicensed specifications",
+          "pages": [
+            251,
+            252
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "8.7.1 Ghost mode",
+          "pages": [
+            253,
+            254,
+            255,
+            256,
+            257
+          ],
+          "chunk_count": 12
+        },
+        {
+          "title": "8.7.2 Optional database usage",
+          "pages": [
+            258,
+            259
+          ],
+          "chunk_count": 4
+        }
+      ]
+    },
+    {
+      "title": "9 Appendix",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            260
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "9.1 Care and maintenance",
+          "pages": [
+            261,
+            262
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "9.1.1 Replacing the sensor cover",
+          "pages": [
+            263,
+            264,
+            265
+          ],
+          "chunk_count": 8
+        },
+        {
+          "title": "9.1.2 Replacing the sensor hardware",
+          "pages": [
+            266,
+            267
+          ],
+          "chunk_count": 10
+        },
+        {
+          "title": "9.1.3 Sensor replacement software setting",
+          "pages": [
+            268,
+            269,
+            270,
+            271,
+            272
+          ],
+          "chunk_count": 16
+        },
+        {
+          "title": "9.1.4 Hardware state",
+          "pages": [
+            273,
+            274
+          ],
+          "chunk_count": 6
+        },
+        {
+          "title": "9.2 Overview of icons",
+          "pages": [
+            275,
+            276,
+            277,
+            278,
+            279,
+            280,
+            281,
+            282,
+            283
+          ],
+          "chunk_count": 35
+        },
+        {
+          "title": "9.3 Overview of error icons in the viewer",
+          "pages": [
+            284,
+            285
+          ],
+          "chunk_count": 3
+        },
+        {
+          "title": "9.4 Error messages",
+          "pages": [
+            286,
+            287,
+            288,
+            289
+          ],
+          "chunk_count": 23
+        },
+        {
+          "title": "9.5 Glossary",
+          "pages": [
+            290,
+            291
+          ],
+          "chunk_count": 14
+        },
+        {
+          "title": "9.6 Contact",
+          "pages": [
+            292
+          ],
+          "chunk_count": 1
+        }
+      ]
+    },
+    {
+      "title": "Index",
+      "sections": [
+        {
+          "title": "General",
+          "pages": [
+            293,
+            294,
+            295
+          ],
+          "chunk_count": 3
+        }
+      ]
+    }
+  ]
+}

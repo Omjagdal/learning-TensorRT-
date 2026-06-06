@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Industrial Manual Chatbot — Python Dependencies
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# ── LangChain ─────────────────────────────────────────────────────────────────
+langchain==0.2.1
+langchain-community==0.2.1
+langchain-core==0.2.1
+
+# ── Vector Database (Qdrant) ──────────────────────────────────────────────────
+qdrant-client>=1.9.0
+
+# ── Embeddings (BGE-M3) ──────────────────────────────────────────────────────
+sentence-transformers>=3.0.0
+FlagEmbedding>=1.2.0
+
+# ── Reranker (BGE-Reranker-Large) ─────────────────────────────────────────────
+# Uses sentence-transformers CrossEncoder (included above)
+
+# ── BM25 Keyword Search ──────────────────────────────────────────────────────
+rank-bm25>=0.2.2
+
+# ── LLM (Qwen3 via Ollama HTTP + HuggingFace fallback) ───────────────────────
+requests>=2.31.0
+transformers>=4.41.0
+torch
+accelerate
+
+# ── PDF Processing (PyMuPDF) ─────────────────────────────────────────────────
+PyMuPDF>=1.24.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+aiofiles==23.2.1
+numpy<2.0.0
+tqdm==4.66.4
+loguru==0.7.2
+pyyaml>=6.0
+tiktoken>=0.7.0

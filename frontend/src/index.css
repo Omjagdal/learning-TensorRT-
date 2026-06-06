@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --accent-blue: #2f81f7;
+    --accent-blue-hover: #388bfd;
+    --accent-green: #3fb950;
+    --accent-orange: #e3b341;
+    --accent-red: #f85149;
+    --accent-purple: #a371f7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body, #root {
+    height: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-md font-medium text-sm transition-all duration-150 cursor-pointer
+           bg-blue-600 hover:bg-blue-500 text-white border border-blue-500
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-1.5 rounded-md text-sm transition-all duration-150 cursor-pointer
+           text-gray-400 hover:text-white hover:bg-white/5 border border-transparent;
+  }
+
+  .input-base {
+    @apply w-full px-3 py-2 rounded-md text-sm bg-transparent
+           border border-gray-700 focus:border-blue-500 focus:outline-none
+           text-gray-200 placeholder-gray-600 transition-colors;
+  }
+
+  .card {
+    @apply rounded-lg border border-gray-800 bg-gray-900/50;
+  }
+
+  .tag {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono
+           bg-blue-500/10 text-blue-400 border border-blue-500/20;
+  }
+}
+
+/* Typing indicator dots */
+.typing-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* Message fade-in */
+.msg-enter {
+  animation: msg-in 0.25s ease-out;
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Upload progress bar */
+.progress-bar {
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
