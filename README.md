@@ -1,1 +1,2 @@
 TensorRT
+MIT license
