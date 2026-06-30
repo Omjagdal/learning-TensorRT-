@@ -548,7 +548,7 @@ function UserMessage({ text, image }) {
           </div>
         )}
         {text && (
-          <div className="px-4 py-3 rounded-2xl rounded-tr-md text-[17px] leading-relaxed"
+          <div className="px-4 py-3 rounded-2xl rounded-tr-md text-[18.5px] leading-relaxed"
             style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
             {text}
           </div>
@@ -581,7 +581,7 @@ function AssistantMessage({ response, streaming, streamStages, bookmarks, onTogg
         <DiagramsSection images={response.images} onOpenFolderView={onOpenFolderView} />
 
         {/* Answer */}
-        <div className="text-[17px] leading-[1.85]" style={{ color: 'var(--text-primary)' }}>
+        <div className="text-[18.5px] leading-[1.85]" style={{ color: 'var(--text-primary)' }}>
           <div className="prose prose-lg max-w-none
                           prose-p:mb-5 prose-p:mt-2
                           prose-ul:my-5 prose-ol:my-5

@@ -103,24 +103,29 @@ RULES:
    - Use strict Markdown headings (e.g., ### Heading Name) for sections. Do NOT just use bold text for section titles.
    - Use standard bulleted (-) or numbered (1.) lists for procedures.
    - **TABLES**: If the question asks for technical specifications, limits, parameters, or comparisons (like the bead width limits), you MUST present the data as a Markdown table.
-   - Use **bold text** for emphasis or to highlight conclusions.
+   - Use **bold text** for emphasis, but ensure you properly close all markdown tags (e.g., **like this**).
    - Use horizontal dividers (---) to separate distinct sections.
 6. APPROPRIATE LENGTH & DEPTH: Scale the length and depth of your answer to exactly match what the user is asking. 
    - If they ask a simple, specific question (e.g., "What is the bead width?"), give a concise, direct answer. Do NOT generate unnecessary filler.
    - If they ask a broad or complex question (e.g., "Explain how the system works" or "How do I teach the camera?"), provide a comprehensive, step-by-step breakdown covering the mechanism, components, safety, and procedures.
    - Always ensure the answer is fully complete but never artificially padded.
-7. PROVIDE EXAMPLES: Generate concrete examples depending on the user's query. If applicable, provide a practical example from the manual context to help explain concepts or parameters.
+7. PROVIDE EXAMPLES: Generate concrete, practical examples based on the user's query. 
+   - Keep the examples extremely simple, practical, and easy for an operator to understand.
    - Do NOT scatter examples throughout the text.
-   - Aggregate the example(s) and place them ONLY at the end of your response, in their own section under a " Example" heading, immediately BEFORE the conclusion.
-8. ASCII DIAGRAMS: Generate a simple ASCII text diagram/flowchart for ALMOST ALL queries, mapping out the logic, concepts, components, or sequential steps. Use vertical pipes and arrows in a ```text code block, like:
-      Concept A
-        |
-        v
-      Concept B
+   - FORMAT EXAMPLES AS TABLES: If the example involves parameters, measurements, specifications, or numerical values, present it as a clean Markdown table with a "Parameter" column and a "Specification" or "Value" column.
+   - For procedural or scenario-based examples, use a short numbered list.
+   - Aggregate the example(s) and place them ONLY at the end of your response, in their own section under a "### Example" heading, immediately BEFORE the conclusion.
+8. ASCII DIAGRAMS: Generate a strictly linear, single-column ASCII text diagram/flowchart for ALMOST ALL queries to map out logic, concepts, or steps. 
+   - Keep it extremely simple. Do NOT attempt horizontal branching, parallel columns, or complex layouts.
+   - Use vertical pipes and arrows in a ```text code block, like:
+      [Concept A]
+           |
+           v
+      [Concept B]
    - Try to include this diagram for most explanations to visually aid the operator.
    - Place the diagram after your text explanation but before the examples and conclusion.
 9. DO NOT append "Manual Reference", source citations, or list the sources used at the end of your answer. The UI already displays the sources automatically.
-10. CONCLUSION: Always conclude your technical responses with a brief, helpful summary or wrap-up statement under a " Conclusion" heading."""
+10. CONCLUSION: Always conclude your technical responses with a brief, helpful summary or wrap-up statement under a "### Conclusion" heading."""
 
 
 CLASSIFY_PROMPT = """You are a query router for an industrial machine manual chatbot.
