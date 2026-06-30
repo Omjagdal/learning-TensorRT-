@@ -9,16 +9,62 @@ const api = axios.create({
 
 // ── Manuals ───────────────────────────────────────────────────────────────────
 
-export const uploadManual = (file, onProgress) => {
-  const form = new FormData()
-  form.append('file', file)
-  return api.post('/manuals/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: e => onProgress?.(Math.round((e.loaded * 100) / e.total)),
-  })
-}
 
 export const listManuals = () => api.get('/manuals/')
+export const uploadManual = (formData, { onProgress, onDone, onError } = {}) => {
+  return new Promise((resolve, reject) => {
+    fetch('/api/v1/manuals/upload', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+          onError?.(err.detail || 'Upload failed')
+          reject(new Error(err.detail || 'Upload failed'))
+          return
+        }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop()
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                if (data.stage === 'Error') {
+                  onError?.(data.error || 'Ingestion error')
+                  reject(new Error(data.error || 'Ingestion error'))
+                  return
+                } else if (data.stage === 'Done') {
+                  onDone?.(data)
+                  resolve(data)
+                  return
+                } else {
+                  onProgress?.(data.stage, data.progress)
+                }
+              } catch {
+                // skip malformed JSON
+              }
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        onError?.(err.message || 'Upload connection failed')
+        reject(err)
+      })
+  })
+}
 export const deleteManual = (id) => api.delete(`/manuals/${id}`)
 export const fetchSourcePage = (manualId, pageNumber) => api.get(`/sources/${manualId}/pages/${pageNumber}`)
 
@@ -45,12 +91,13 @@ export const sendQuery = (question, manualIds = null, topK = null) =>
  * @param {function} callbacks.onError  - (error) => void — error
  * @returns {AbortController} — call .abort() to cancel the stream
  */
-export const streamQuery = (question, manualIds, { onStage, onToken, onDone, onError }) => {
+export const streamQuery = (question, manualIds, image_b64, { onStage, onToken, onImages, onDone, onError }) => {
   const controller = new AbortController()
 
   const body = {
     question,
     ...(manualIds?.length && { manual_ids: manualIds }),
+    ...(image_b64 && { image_b64 }),
   }
 
   fetch('/api/v1/chat/stream', {
@@ -91,6 +138,9 @@ export const streamQuery = (question, manualIds, { onStage, onToken, onDone, onE
                 case 'stage':
                   onStage?.(data)
                   break
+                case 'images':
+                  onImages?.(data)
+                  break
                 case 'token':
                   onToken?.(data)
                   break
@@ -123,3 +173,8 @@ export const streamQuery = (question, manualIds, { onStage, onToken, onDone, onE
 // ── Health ────────────────────────────────────────────────────────────────────
 
 export const getHealth = () => api.get('/health')
+
+// ── Knowledge Base Info ──────────────────────────────────────────────────────
+
+export const getKnowledgeBase = () => api.get('/info/knowledge-base')
+

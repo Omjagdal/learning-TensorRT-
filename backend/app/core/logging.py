@@ -11,6 +11,7 @@ Provides:
 
 import sys
 from pathlib import Path
+
 from loguru import logger
 
 
@@ -80,11 +81,10 @@ def setup_logging(debug: bool = False):
 
 # ── Specialized loggers ──────────────────────────────────────────────────────
 
+
 def log_query(question: str, manual_ids: list[str] | None = None):
     """Log a user query for analytics."""
-    logger.bind(query_log=True).info(
-        f"QUERY | q=\"{question}\" | manuals={manual_ids}"
-    )
+    logger.bind(query_log=True).info(f'QUERY | q="{question}" | manuals={manual_ids}')
 
 
 def log_retrieval(
@@ -95,6 +95,6 @@ def log_retrieval(
 ):
     """Log retrieval results for analytics."""
     logger.bind(retrieval_log=True).info(
-        f"RETRIEVAL | q=\"{question}\" | results={num_results} | "
+        f'RETRIEVAL | q="{question}" | results={num_results} | '
         f"type={search_type} | duration={duration_ms:.1f}ms"
     )

@@ -6,11 +6,12 @@ Maintains an in-memory index built from chunks retrieved from Qdrant.
 """
 
 from __future__ import annotations
+
 import threading
 from typing import Optional
 
-from rank_bm25 import BM25Okapi
 from loguru import logger
+from rank_bm25 import BM25Okapi
 
 from app.core.config import get_settings
 from app.database.qdrant_store import get_qdrant_store
@@ -18,7 +19,7 @@ from app.database.qdrant_store import get_qdrant_store
 settings = get_settings()
 
 _lock = threading.Lock()
-_bm25_index: Optional['BM25Index'] = None
+_bm25_index: Optional["BM25Index"] = None
 
 
 def tokenize(text: str) -> list[str]:
@@ -27,6 +28,7 @@ def tokenize(text: str) -> list[str]:
     Lowercase, remove punctuation, split by whitespace.
     """
     import string
+
     text = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
     return text.split()
@@ -88,7 +90,9 @@ class BM25Index:
 
         # Get top-K indices (we fetch more initially if filtering)
         k = len(scores) if manual_ids else top_k
-        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
+        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[
+            :k
+        ]
 
         results = []
         for idx in top_indices:

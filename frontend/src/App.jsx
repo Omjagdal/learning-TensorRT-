@@ -1,32 +1,55 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { listManuals, streamQuery, getHealth } from './utils/api'
+import { listManuals, deleteManual, streamQuery, getHealth, getKnowledgeBase } from './utils/api'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import ChatInput from './components/ChatInput'
 import { Message, TypingIndicator } from './components/Message'
-import { BookOpen } from 'lucide-react'
+import KnowledgeInfo from './components/KnowledgeInfo'
+import FolderView from './components/FolderView'
 
-function EmptyState() {
+const SUGGESTION_PROMPTS = [
+  'Explain me the SOP(standard operating procedure) diagram & its steps',
+  "What are the Do's and Don'ts?",
+  'Explain vision teaching and parametrization steps.',
+  'What are the limits for bead width?',
+  'How does the image recording sequence work?',
+  'Describe the control architecture of quiss vision2d .',
+  'What are the electrical connections with diagram?',
+  'Provide hardware information about sensors and cables diagram.'
+]
+
+function EmptyState({ onSend, disabled }) {
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
-      <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20
-                      flex items-center justify-center">
-        <BookOpen size={24} className="text-blue-400" />
-      </div>
-      <div>
-        <h2 className="text-base font-semibold text-gray-300">Ask your machine manual</h2>
-        <p className="text-sm text-gray-600 mt-1 max-w-xs">
-          Ask technical questions about your industrial machinery in natural language.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-2 text-xs text-gray-500 max-w-sm">
-        {[
-          '⚡ Self-RAG pipeline with answer validation',
-          '📖 Source citations with page numbers',
-          '🔍 Semantic search with relevance filtering',
-          '🛡️ Hallucination detection & extractive fallback',
-        ].map(f => (
-          <div key={f} className="px-3 py-2 rounded-md border border-gray-800 bg-gray-900/30">{f}</div>
+    <div className="flex-1 flex flex-col items-center justify-center text-center px-8 pb-4">
+      {/* Green gradient orb */}
+      <div className="green-orb mb-10" />
+
+      {/* Greeting */}
+      <h2 className="text-[32px] md:text-[40px] font-semibold leading-tight tracking-tight mb-2" style={{ color: 'var(--text-primary)' }}>
+        {greeting}
+      </h2>
+      <h3 className="text-[32px] md:text-[40px] font-semibold leading-tight tracking-tight mb-4" style={{ color: 'var(--text-secondary)' }}>
+        Can I help you with anything?
+      </h3>
+      <p className="text-[14px] max-w-md mb-10 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        Choose a prompt below or write your own to start<br />
+        chatting with ISRA Vision Chatbot Assistant
+      </p>
+
+      {/* Suggestion cards */}
+      <div className="flex flex-wrap justify-center gap-3 max-w-3xl">
+        {SUGGESTION_PROMPTS.map(q => (
+          <button
+            key={q}
+            onClick={() => onSend(q)}
+            disabled={disabled}
+            className="suggestion-card"
+          >
+            {q}
+          </button>
         ))}
       </div>
     </div>
@@ -40,8 +63,75 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [manualsLoading, setManualsLoading] = useState(false)
   const [health, setHealth] = useState(null)
+  const [showKnowledge, setShowKnowledge] = useState(false)
+  const [knowledgeData, setKnowledgeData] = useState(null)
+  const [theme, setTheme] = useState('dark')
+  const [folderViewData, setFolderViewData] = useState(null)
+
+  // Bookmarks state from localStorage
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('manualmind_bookmarks')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Save bookmarks to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('manualmind_bookmarks', JSON.stringify(bookmarks))
+  }, [bookmarks])
+
+  const toggleBookmark = (response) => {
+    setBookmarks(prev => {
+      const exists = prev.find(b => b.question === response.question)
+      if (exists) {
+        return prev.filter(b => b.question !== response.question)
+      } else {
+        return [...prev, {
+          id: Date.now(),
+          question: response.question,
+          answer: response.answer,
+          sources: response.sources,
+          images: response.images,
+          timestamp: Date.now()
+        }]
+      }
+    })
+  }
+
+  const handleSelectBookmark = (bookmark) => {
+    // Add both user message and assistant message instantly
+    const userMsgId = Date.now()
+    const assistantMsgId = userMsgId + 1
+
+    setMessages(prev => [
+      ...prev,
+      { id: userMsgId, role: 'user', text: bookmark.question },
+      {
+        id: assistantMsgId,
+        role: 'assistant',
+        streaming: false,
+        response: {
+          answer: bookmark.answer,
+          sources: bookmark.sources || [],
+          images: bookmark.images || [],
+          question: bookmark.question,
+          processing_time_ms: 0,
+          answer_mode: 'bookmarked',
+          is_validated: true,
+          pipeline_steps: []
+        }
+      }
+    ])
+  }
+
   const bottomRef = useRef(null)
   const abortRef = useRef(null)
+  const autoScrollEnabled = useRef(true)
+
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark')
 
   // ── Fetch manuals ─────────────────────────────────────────────────────────
 
@@ -83,8 +173,17 @@ export default function App() {
   // ── Auto-scroll ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (autoScrollEnabled.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' })
+    }
   }, [messages, loading])
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target
+    // If user is within 100px of the bottom, keep auto-scrolling
+    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100
+    autoScrollEnabled.current = isAtBottom
+  }
 
   // ── Toggle manual selection ───────────────────────────────────────────────
 
@@ -94,16 +193,39 @@ export default function App() {
     )
   }
 
+  const handleDeleteManual = async (manualId) => {
+    try {
+      await deleteManual(manualId)
+      setSelectedIds(prev => prev.filter(id => id !== manualId))
+      fetchManuals()
+    } catch (err) {
+      alert(`Delete failed: ${err.response?.data?.detail || err.message}`)
+    }
+  }
+
+  // ── Knowledge Base Info ───────────────────────────────────────────────────
+
+  const handleShowKnowledge = async () => {
+    setShowKnowledge(true)
+    try {
+      const res = await getKnowledgeBase()
+      setKnowledgeData(res.data)
+    } catch {
+      // If API fails, show what we can
+      setKnowledgeData(null)
+    }
+  }
+
   // ── Send query (SSE streaming) ────────────────────────────────────────────
 
-  const handleSend = async (question) => {
+  const handleSend = async (question, imageBase64 = null) => {
     // Add user message
     const userMsgId = Date.now()
     const assistantMsgId = userMsgId + 1
 
     setMessages(prev => [
       ...prev,
-      { id: userMsgId, role: 'user', text: question },
+      { id: userMsgId, role: 'user', text: question, image: imageBase64 },
       {
         id: assistantMsgId,
         role: 'assistant',
@@ -136,12 +258,22 @@ export default function App() {
     abortRef.current = streamQuery(
       question,
       selectedIds.length > 0 ? selectedIds : null,
+      imageBase64,
       {
         onStage: (data) => {
           updateAssistant(msg => ({
             streamStages: {
               ...msg.streamStages,
               [data.stage]: data,
+            },
+          }))
+        },
+
+        onImages: (data) => {
+          updateAssistant(msg => ({
+            response: {
+              ...msg.response,
+              images: data,
             },
           }))
         },
@@ -164,6 +296,7 @@ export default function App() {
             response: {
               ...msg.response,
               sources: data.sources || [],
+              images: data.images || [],
               processing_time_ms: data.processing_time_ms || 0,
               answer_mode: data.answer_mode || 'generated',
               is_validated: data.is_validated || false,
@@ -195,11 +328,29 @@ export default function App() {
     )
   }
 
+  const handleStop = () => {
+    abortRef.current?.abort()
+    setLoading(false)
+    setMessages(prev => prev.map(msg =>
+      msg.streaming
+        ? {
+          ...msg,
+          streaming: false,
+          streamStages: null,
+          response: {
+            ...msg.response,
+            answer: msg.response.answer ? msg.response.answer + '\n\n*(Stopped by user)*' : '*(Stopped by user)*'
+          }
+        }
+        : msg
+    ))
+  }
+
   const hasMessages = messages.length > 0
   const nothingIndexed = manuals.length === 0
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 overflow-hidden">
+    <div className={`flex flex-col h-screen overflow-hidden ${theme === 'light' ? 'light' : ''}`} style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <Header
         health={health}
         hasMessages={hasMessages}
@@ -207,6 +358,9 @@ export default function App() {
           abortRef.current?.abort()
           setMessages([])
         }}
+        onShowKnowledge={handleShowKnowledge}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <div className="flex flex-1 min-h-0">
@@ -215,30 +369,69 @@ export default function App() {
           selectedIds={selectedIds}
           onToggle={toggleManual}
           onRefresh={fetchManuals}
+          onDelete={handleDeleteManual}
           loading={manualsLoading}
+          bookmarks={bookmarks}
+          onSelectBookmark={handleSelectBookmark}
+          onRemoveBookmark={(bookmark) => toggleBookmark({ question: bookmark.question })}
         />
 
         {/* Chat area */}
         <main className="flex-1 flex flex-col min-w-0">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-            {!hasMessages ? (
-              <EmptyState />
-            ) : (
-              messages.map(msg => <Message key={msg.id} msg={msg} />)
-            )}
-            {loading && !messages.some(m => m.streaming) && <TypingIndicator />}
-            <div ref={bottomRef} />
-          </div>
+          {folderViewData ? (
+            <FolderView
+              data={folderViewData}
+              onBack={() => setFolderViewData(null)}
+            />
+          ) : (
+            <>
+              {/* Messages */}
+              <div
+                className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
+                onScroll={handleScroll}
+              >
+                {!hasMessages ? (
+                  <EmptyState onSend={handleSend} disabled={nothingIndexed} />
+                ) : (
+                  <div className="max-w-3xl mx-auto space-y-6">
+                    {messages.map(msg => (
+                      <Message
+                        key={msg.id}
+                        msg={msg}
+                        bookmarks={bookmarks}
+                        onToggleBookmark={toggleBookmark}
+                        onOpenFolderView={setFolderViewData}
+                      />
+                    ))}
+                  </div>
+                )}
+                {loading && !messages.some(m => m.streaming) && (
+                  <div className="max-w-3xl mx-auto">
+                    <TypingIndicator />
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
 
-          {/* Input */}
-          <ChatInput
-            onSend={handleSend}
-            loading={loading}
-            disabled={nothingIndexed}
-          />
+              {/* Input */}
+              <ChatInput
+                onSend={handleSend}
+                onStop={handleStop}
+                loading={loading}
+                disabled={nothingIndexed}
+              />
+            </>
+          )}
         </main>
       </div>
+
+      {/* Knowledge Info Modal */}
+      {showKnowledge && (
+        <KnowledgeInfo
+          data={knowledgeData}
+          onClose={() => setShowKnowledge(false)}
+        />
+      )}
     </div>
   )
 }

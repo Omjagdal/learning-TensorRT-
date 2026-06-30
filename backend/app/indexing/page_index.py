@@ -12,9 +12,10 @@ Used for:
 """
 
 from __future__ import annotations
+
 import json
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 from typing import Optional
 
 from loguru import logger
@@ -49,9 +50,7 @@ class HierarchicalPageIndex:
 
         Each chunk must have: manual_id, chapter, section, page, chunk_id, text
         """
-        tree: dict = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(list))
-        )
+        tree: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
         for chunk in chunks:
             chapter = chunk.get("chapter", "Unknown Chapter")
@@ -98,21 +97,23 @@ class HierarchicalPageIndex:
             for sec_title, pages in sections.items():
                 all_pages = sorted(pages.keys())
                 chunk_count = sum(len(chunks) for chunks in pages.values())
-                ch_sections.append({
-                    "title": sec_title,
-                    "pages": all_pages,
-                    "chunk_count": chunk_count,
-                })
-            chapters.append({
-                "title": ch_title,
-                "sections": ch_sections,
-            })
+                ch_sections.append(
+                    {
+                        "title": sec_title,
+                        "pages": all_pages,
+                        "chunk_count": chunk_count,
+                    }
+                )
+            chapters.append(
+                {
+                    "title": ch_title,
+                    "sections": ch_sections,
+                }
+            )
 
         return {"chapters": chapters}
 
-    def get_chunks_by_chapter(
-        self, manual_id: str, chapter: str
-    ) -> list[dict]:
+    def get_chunks_by_chapter(self, manual_id: str, chapter: str) -> list[dict]:
         """Get all chunks in a specific chapter."""
         if manual_id not in self._index:
             return []
@@ -136,9 +137,7 @@ class HierarchicalPageIndex:
             chunks.extend(page_chunks)
         return chunks
 
-    def get_chunks_by_page(
-        self, manual_id: str, page: int
-    ) -> list[dict]:
+    def get_chunks_by_page(self, manual_id: str, page: int) -> list[dict]:
         """Get all chunks from a specific page across all chapters/sections."""
         if manual_id not in self._index:
             return []

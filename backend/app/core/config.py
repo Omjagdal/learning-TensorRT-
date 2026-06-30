@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     embedding_model_name: str = "BAAI/bge-m3"
     embedding_dimension: int = 1024
     embedding_batch_size: int = 32
+    embedding_provider: str = "local"  # "local" (FlagEmbedding) or "ollama"
 
     # ── Reranker (BGE-Reranker-Large) ─────────────────────────────────────────
     reranker_model_name: str = "BAAI/bge-reranker-large"
@@ -74,15 +75,19 @@ class Settings(BaseSettings):
     # ── LLM (Qwen3 8B via Ollama) ─────────────────────────────────────────────
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:8b"
+    ollama_vlm_model: str = "qwen3-vl:8b"
     llm_max_new_tokens: int = 1024
     llm_temperature: float = 0.1
 
     # ── LLM Fallback (HuggingFace Transformers) ──────────────────────────────
-    llm_fallback_enabled: bool = True
+    llm_fallback_enabled: bool = False  # Disabled: avoids loading a 8B HF model on startup when Ollama is the primary LLM
     llm_hf_model_name: str = "Qwen/Qwen3-8B"
 
+    # ── Offline Mode ─────────────────────────────────────────────────────────
+    offline_mode: bool = True
+
     # ── CORS ──────────────────────────────────────────────────────────────────
-    allowed_origins: str = "http://localhost:3000,http://localhost:5173"
+    allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:8000"
 
     @property
     def origins_list(self) -> list[str]:

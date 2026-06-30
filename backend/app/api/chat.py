@@ -5,9 +5,9 @@ api/chat.py — Chat / query endpoint.
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from app.schemas import ChatRequest, ChatResponse
-from app.rag.pipeline import run_rag_pipeline
 from app.database.qdrant_store import get_qdrant_store
+from app.rag.pipeline import run_rag_pipeline
+from app.schemas import ChatRequest, ChatResponse
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -40,4 +40,6 @@ async def chat(request: ChatRequest):
         return response
     except Exception as e:
         logger.exception(f"RAG pipeline error: {e}")
-        raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Query processing failed: {str(e)}"
+        )

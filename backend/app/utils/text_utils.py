@@ -5,6 +5,7 @@ Used across the ingestion pipeline, chunking, and search modules.
 """
 
 from __future__ import annotations
+
 import re
 import unicodedata
 
@@ -40,9 +41,9 @@ def clean_text(text: str) -> str:
 
     # Remove common page headers/footers
     text = re.sub(r"(?m)^Page\s+\d+\s*(?:of\s+\d+)?\s*$", "", text)
-    text = re.sub(r"(?m)^\d+\s*$", "", text)      # standalone page numbers
-    text = re.sub(r"(?m)^©.*$", "", text)           # copyright lines
-    text = re.sub(r"(?m)^Confidential.*$", "", text) # confidentiality notices
+    text = re.sub(r"(?m)^\d+\s*$", "", text)  # standalone page numbers
+    text = re.sub(r"(?m)^©.*$", "", text)  # copyright lines
+    text = re.sub(r"(?m)^Confidential.*$", "", text)  # confidentiality notices
 
     return text.strip()
 

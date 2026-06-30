@@ -6,6 +6,7 @@ to merge results from both dense and sparse retrieval methods.
 """
 
 from __future__ import annotations
+
 from typing import Optional
 
 from loguru import logger
@@ -18,7 +19,9 @@ from app.retrieval.bm25 import get_bm25_index
 settings = get_settings()
 
 
-def _normalize_scores(results: list[dict], score_key: str = "relevance_score") -> list[dict]:
+def _normalize_scores(
+    results: list[dict], score_key: str = "relevance_score"
+) -> list[dict]:
     """Min-max normalize scores to [0, 1] range."""
     if not results:
         return results
@@ -38,7 +41,9 @@ def _normalize_scores(results: list[dict], score_key: str = "relevance_score") -
     return results
 
 
-def _rrf_fusion(vector_results: list[dict], bm25_results: list[dict], k: int = 60) -> list[dict]:
+def _rrf_fusion(
+    vector_results: list[dict], bm25_results: list[dict], k: int = 60
+) -> list[dict]:
     """
     Reciprocal Rank Fusion (RRF).
     RRF_score = 1 / (k + rank)
@@ -89,13 +94,17 @@ def _linear_fusion(
     for item in v_norm:
         chunk_id = item["chunk_id"]
         items[chunk_id] = item
-        fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + (alpha * item["normalized_score"])
+        fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + (
+            alpha * item["normalized_score"]
+        )
 
     for item in b_norm:
         chunk_id = item["chunk_id"]
         if chunk_id not in items:
             items[chunk_id] = item
-        fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + ((1.0 - alpha) * item["normalized_score"])
+        fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + (
+            (1.0 - alpha) * item["normalized_score"]
+        )
 
     # Reconstruct list and sort by fused score
     fused_list = []

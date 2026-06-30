@@ -11,5 +11,18 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 3000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'mermaid': ['mermaid'],
+          'syntax-highlighter': ['react-syntax-highlighter'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'markdown-vendor': ['react-markdown', 'remark-gfm']
+        }
+      }
+    }
   }
 })

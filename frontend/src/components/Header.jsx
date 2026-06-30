@@ -1,53 +1,76 @@
 import React from 'react'
-import { Cpu, Wifi, WifiOff, Zap } from 'lucide-react'
+import { Database, HardDrive, Sun, Moon } from 'lucide-react'
 import clsx from 'clsx'
 
-export default function Header({ health, onClear, hasMessages }) {
+export default function Header({ health, onClear, hasMessages, onShowKnowledge, theme, onToggleTheme }) {
   const online = health?.status === 'ok'
+  const isLight = theme === 'light'
 
   return (
-    <header className="flex items-center gap-3 px-5 py-3 border-b border-gray-800 bg-gray-900/70 backdrop-blur">
+    <header className="flex items-center justify-between px-6 py-4 relative z-50" style={{ background: 'var(--bg-primary)' }}>
       {/* Brand */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-md bg-blue-500/20 border border-blue-500/30
-                        flex items-center justify-center">
-          <Zap size={14} className="text-blue-400" />
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-contain p-1" />
         </div>
-        <div>
-          <h1 className="text-sm font-bold text-gray-100 leading-none">ManualMind</h1>
-          <p className="text-xs text-gray-600 leading-none mt-0.5">Machine Manual Chatbot</p>
-        </div>
+        <span className="text-[15px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>ISRA Vision Chatbot Assistant</span>
       </div>
 
-      {/* Status pills */}
-      <div className="flex items-center gap-2 ml-auto">
+      {/* Right actions */}
+      <div className="flex items-center gap-3">
         {health && (
-          <>
-            <div className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border',
-              online
-                ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                : 'bg-red-500/10 text-red-400 border-red-500/20'
+          <div className="hidden md:flex items-center gap-2">
+            {health.offline_mode && (
+              <span className="tag text-emerald-400 border-emerald-900/50 bg-emerald-500/10">
+                <HardDrive size={11} /> Offline
+              </span>
+            )}
+            <span className={clsx('tag', online
+              ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10'
+              : 'text-red-400 border-red-500/20 bg-red-500/10'
             )}>
-              {online ? <Wifi size={10} /> : <WifiOff size={10} />}
-              {online ? 'Online' : 'Offline'}
-            </div>
-            <div className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border',
-              health.llm_loaded
-                ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                : 'bg-gray-700/50 text-gray-500 border-gray-700'
-            )}>
-              <Cpu size={10} />
-              {health.llm_loaded ? 'LLM ready' : 'LLM loading…'}
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs
-                            border border-gray-700/50 text-gray-500">
-              {health.indexed_manuals} manual{health.indexed_manuals !== 1 ? 's' : ''}
-            </div>
-          </>
+              <span className={clsx('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-400' : 'bg-red-400')} />
+              {online ? 'Connected' : 'Offline'}
+            </span>
+          </div>
         )}
+
+        <button
+          onClick={onShowKnowledge}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all"
+          style={{ color: 'var(--text-secondary)' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <Database size={14} />
+          Knowledge
+        </button>
+
         {hasMessages && (
-          <button onClick={onClear} className="btn-ghost text-xs">Clear chat</button>
+          <button
+            onClick={onClear}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          >
+            Clear
+          </button>
         )}
+
+        {/* Theme toggle */}
+        <button
+          onClick={onToggleTheme}
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+        >
+          {isLight ? <Moon size={15} /> : <Sun size={15} />}
+        </button>
+
+        {/* User avatar */}
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-semibold ml-1"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+        >
+          M
+        </div>
       </div>
     </header>
   )

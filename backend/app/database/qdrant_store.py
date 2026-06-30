@@ -11,6 +11,7 @@ Provides:
 """
 
 from __future__ import annotations
+
 import uuid
 from typing import Optional
 
@@ -37,6 +38,7 @@ class QdrantStore:
     def __init__(self):
         self._client = None
         self._collection_name = settings.qdrant_collection
+        self._images_collection_name = f"{settings.qdrant_collection}_images"
 
     @property
     def client(self):
@@ -46,57 +48,90 @@ class QdrantStore:
         return self._client
 
     def _connect(self):
-        """Establish connection to Qdrant (embedded or remote)."""
+        """Establish connection to Qdrant (embedded or remote) with retry logic."""
+        import time
         from qdrant_client import QdrantClient
         from qdrant_client.models import Distance, VectorParams
 
-        try:
-            if settings.qdrant_use_embedded:
-                # Embedded mode — no Docker required
-                logger.info(
-                    f"Connecting to embedded Qdrant at: {settings.qdrant_embedded_path}"
-                )
-                self._client = QdrantClient(
-                    path=str(settings.qdrant_embedded_path)
-                )
-            else:
-                # Remote mode — Docker or external server
-                logger.info(
-                    f"Connecting to Qdrant at: "
-                    f"{settings.qdrant_host}:{settings.qdrant_port}"
-                )
-                self._client = QdrantClient(
-                    host=settings.qdrant_host,
-                    port=settings.qdrant_port,
-                )
+        max_retries = 5
+        retry_delay = 2  # seconds between retries
 
-            # Create collection if it doesn't exist
-            collections = [
-                c.name for c in self._client.get_collections().collections
-            ]
+        for attempt in range(1, max_retries + 1):
+            try:
+                if settings.qdrant_use_embedded:
+                    logger.info(
+                        f"Connecting to embedded Qdrant at: {settings.qdrant_embedded_path}"
+                    )
+                    self._client = QdrantClient(path=str(settings.qdrant_embedded_path))
+                else:
+                    logger.info(
+                        f"Connecting to Qdrant at: "
+                        f"{settings.qdrant_host}:{settings.qdrant_port}"
+                    )
+                    self._client = QdrantClient(
+                        host=settings.qdrant_host,
+                        port=settings.qdrant_port,
+                    )
 
-            if self._collection_name not in collections:
-                self._client.create_collection(
-                    collection_name=self._collection_name,
-                    vectors_config=VectorParams(
-                        size=settings.embedding_dimension,
-                        distance=Distance.COSINE,
-                    ),
-                )
-                logger.info(
-                    f"Created Qdrant collection '{self._collection_name}' "
-                    f"(dim={settings.embedding_dimension}, distance=cosine)"
-                )
-            else:
-                info = self._client.get_collection(self._collection_name)
-                logger.info(
-                    f"Using existing Qdrant collection '{self._collection_name}' "
-                    f"({info.points_count} points)"
-                )
+                # Create collection if it doesn't exist
+                collections = [c.name for c in self._client.get_collections().collections]
 
-        except Exception as e:
-            logger.error(f"Qdrant connection failed: {e}")
-            raise
+                if self._collection_name not in collections:
+                    self._client.create_collection(
+                        collection_name=self._collection_name,
+                        vectors_config=VectorParams(
+                            size=settings.embedding_dimension,
+                            distance=Distance.COSINE,
+                        ),
+                    )
+                    logger.info(
+                        f"Created Qdrant collection '{self._collection_name}' "
+                        f"(dim={settings.embedding_dimension}, distance=cosine)"
+                    )
+                else:
+                    info = self._client.get_collection(self._collection_name)
+                    logger.info(
+                        f"Using existing Qdrant collection '{self._collection_name}' "
+                        f"({info.points_count} points)"
+                    )
+
+                # Create images collection if it doesn't exist
+                if self._images_collection_name not in collections:
+                    self._client.create_collection(
+                        collection_name=self._images_collection_name,
+                        vectors_config=VectorParams(
+                            size=settings.embedding_dimension,
+                            distance=Distance.COSINE,
+                        ),
+                    )
+                    logger.info(
+                        f"Created Qdrant collection '{self._images_collection_name}' "
+                        f"(dim={settings.embedding_dimension}, distance=cosine)"
+                    )
+                else:
+                    info_img = self._client.get_collection(self._images_collection_name)
+                    logger.info(
+                        f"Using existing Qdrant collection '{self._images_collection_name}' "
+                        f"({info_img.points_count} points)"
+                    )
+
+                return  # ✅ Connected successfully
+
+            except Exception as e:
+                self._client = None
+                is_lock_error = "already accessed" in str(e) or "AlreadyLocked" in str(type(e).__name__)
+                if is_lock_error and attempt < max_retries:
+                    logger.warning(
+                        f"Qdrant storage locked (attempt {attempt}/{max_retries}). "
+                        f"Waiting {retry_delay}s for previous process to release... "
+                        f"(Tip: run 'pkill -f uvicorn' if this persists)"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 1.5  # exponential backoff
+                else:
+                    logger.error(f"Qdrant connection failed: {e}")
+                    raise
+
 
     def upsert_chunks(
         self,
@@ -117,10 +152,12 @@ class QdrantStore:
 
         points = []
         for i, chunk in enumerate(chunks):
-            point_id = str(uuid.uuid5(
-                uuid.NAMESPACE_DNS,
-                chunk.get("chunk_id", f"chunk_{i}"),
-            ))
+            point_id = str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_DNS,
+                    chunk.get("chunk_id", f"chunk_{i}"),
+                )
+            )
 
             payload = {
                 "chunk_id": chunk.get("chunk_id", ""),
@@ -148,7 +185,7 @@ class QdrantStore:
         # Batch upsert (Qdrant handles batching internally)
         batch_size = 100
         for start in range(0, len(points), batch_size):
-            batch = points[start: start + batch_size]
+            batch = points[start : start + batch_size]
             self.client.upsert(
                 collection_name=self._collection_name,
                 points=batch,
@@ -175,7 +212,7 @@ class QdrantStore:
         Returns:
             List of result dicts with payload + relevance_score.
         """
-        from qdrant_client.models import Filter, FieldCondition, MatchAny
+        from qdrant_client.models import FieldCondition, Filter, MatchAny
 
         # Build filter
         query_filter = None
@@ -189,41 +226,152 @@ class QdrantStore:
                 ]
             )
 
-        results = self.client.search(
+        results_response = self.client.query_points(
             collection_name=self._collection_name,
-            query_vector=(
+            query=(
                 query_vector.tolist()
                 if hasattr(query_vector, "tolist")
                 else query_vector
             ),
             limit=top_k,
             query_filter=query_filter,
+            with_payload=True,
             score_threshold=score_threshold,
         )
 
         output = []
-        for hit in results:
-            item = dict(hit.payload)
-            item["relevance_score"] = hit.score
+        for point in results_response.points:
+            item = dict(point.payload)
+            item["relevance_score"] = point.score
+            output.append(item)
+
+        return output
+
+    def upsert_images(self, images_metadata: list[dict], embeddings):
+        """
+        Batch upsert individual images with their CLIP embeddings into Qdrant.
+        """
+        from qdrant_client.models import PointStruct
+
+        if len(images_metadata) == 0:
+            return
+
+        points = []
+        for i, meta in enumerate(images_metadata):
+            point_id = str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_DNS,
+                    f"{meta.get('manual_id', '')}_{meta.get('page', 0)}_{i}",
+                )
+            )
+
+            payload = {
+                "manual_id": meta.get("manual_id", ""),
+                "manual_name": meta.get("manual_name", ""),
+                "filename": meta.get("filename", ""),
+                "page": meta.get("page", 0),
+                "image_path": meta.get("image_path", ""),
+                "hierarchy_path": meta.get("hierarchy_path", ""),
+            }
+
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=embeddings[i].tolist(),
+                    payload=payload,
+                )
+            )
+
+        batch_size = 100
+        for start in range(0, len(points), batch_size):
+            batch = points[start : start + batch_size]
+            self.client.upsert(
+                collection_name=self._images_collection_name,
+                points=batch,
+            )
+
+        logger.info(f"Upserted {len(points)} images to Qdrant")
+
+    def search_images(
+        self,
+        query_vector,
+        top_k: int = 5,
+        manual_ids: Optional[list[str]] = None,
+        score_threshold: Optional[float] = None,
+    ) -> list[dict]:
+        """
+        Search for images in the images collection using a CLIP text embedding.
+        """
+        from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+        query_filter = None
+        if manual_ids:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="manual_id",
+                        match=MatchAny(any=manual_ids),
+                    )
+                ]
+            )
+
+        results_response = self.client.query_points(
+            collection_name=self._images_collection_name,
+            query=(
+                query_vector.tolist()
+                if hasattr(query_vector, "tolist")
+                else query_vector
+            ),
+            limit=top_k,
+            query_filter=query_filter,
+            with_payload=True,
+            score_threshold=score_threshold,
+        )
+
+        output = []
+        for point in results_response.points:
+            item = dict(point.payload)
+            item["relevance_score"] = point.score
             output.append(item)
 
         return output
 
     def delete_manual(self, manual_id: str):
         """Delete all vectors for a specific manual."""
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-        self.client.delete(
-            collection_name=self._collection_name,
-            points_selector=Filter(
-                must=[
-                    FieldCondition(
-                        key="manual_id",
-                        match=MatchValue(value=manual_id),
-                    )
-                ]
-            ),
+        manual_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="manual_id",
+                    match=MatchValue(value=manual_id),
+                )
+            ]
         )
+
+        try:
+            # Newer qdrant-client (>=1.9) uses FilterSelector
+            from qdrant_client.models import FilterSelector
+
+            self.client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(filter=manual_filter),
+            )
+            # Delete from images collection as well
+            self.client.delete(
+                collection_name=self._images_collection_name,
+                points_selector=FilterSelector(filter=manual_filter),
+            )
+        except (ImportError, TypeError):
+            # Older qdrant-client accepts Filter directly
+            self.client.delete(
+                collection_name=self._collection_name,
+                points_selector=manual_filter,
+            )
+            self.client.delete(
+                collection_name=self._images_collection_name,
+                points_selector=manual_filter,
+            )
         logger.info(f"Deleted vectors for manual {manual_id}")
 
     def get_all_payloads(
@@ -241,7 +389,7 @@ class QdrantStore:
         Returns:
             List of payload dicts.
         """
-        from qdrant_client.models import Filter, FieldCondition, MatchAny
+        from qdrant_client.models import FieldCondition, Filter, MatchAny
 
         query_filter = None
         if manual_ids:

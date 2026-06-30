@@ -8,9 +8,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from app.schemas import ChatRequest
-from app.rag.pipeline import stream_rag_pipeline
 from app.database.qdrant_store import get_qdrant_store
+from app.rag.pipeline import stream_rag_pipeline
+from app.schemas import ChatRequest
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -45,6 +45,7 @@ async def chat_stream(request: ChatRequest):
                 question=request.question,
                 manual_ids=request.manual_ids,
                 top_k=request.top_k,
+                image_b64=request.image_b64,
             ):
                 yield _sse_format(event["event"], event.get("data", {}))
         except Exception as e:

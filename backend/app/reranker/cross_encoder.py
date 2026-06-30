@@ -7,6 +7,7 @@ standard dense retrieval.
 """
 
 from __future__ import annotations
+
 import threading
 from typing import Optional
 
@@ -29,19 +30,34 @@ def _load_model():
             return
         try:
             logger.info(f"Loading reranker model: {settings.reranker_model_name}")
-            
+
             # Use sentence-transformers CrossEncoder
-            from sentence_transformers import CrossEncoder
             import torch
+            from sentence_transformers import CrossEncoder
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
             logger.info(f"Using reranker on device: {device}")
 
-            _model = CrossEncoder(
-                settings.reranker_model_name,
-                device=device,
-                max_length=512,
-            )
+            try:
+                # Try offline mode first to prevent DNS timeouts if already downloaded
+                _model = CrossEncoder(
+                    settings.reranker_model_name,
+                    device=device,
+                    max_length=512,
+                    local_files_only=True,
+                )
+            except Exception:
+                if settings.offline_mode:
+                    raise  # Don't try online download in offline mode
+                logger.info("Reranker model not found locally, attempting to download from HuggingFace...")
+                # Fallback to online mode for first-time downloads
+                _model = CrossEncoder(
+                    settings.reranker_model_name,
+                    device=device,
+                    max_length=512,
+                    local_files_only=False,
+                )
+            
             _loaded = True
             logger.info("Reranker loaded successfully")
 
