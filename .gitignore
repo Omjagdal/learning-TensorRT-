@@ -1,0 +1,62 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+backend/venv/
+backend/.venv/
+backend/build_venv/
+
+# ── PyInstaller output ────────────────────────────────────────────────────────
+dist/
+build/
+*.spec.bak
+
+# ── Bundle assets (large model files — do NOT commit to git) ──────────────────
+bundle_assets/
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# ── Environment variables ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend/logs/
+
+# ── Database / storage ────────────────────────────────────────────────────────
+qdrant_storage/
+backend/data/uploads/
+
+# ── OS junk ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Large archive files ───────────────────────────────────────────────────────
+*.tar
+*.tar.gz
+*.zip
+*.7z
