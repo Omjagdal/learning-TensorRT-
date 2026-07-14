@@ -1,17 +1,17 @@
 ; =============================================================================
 ; ISRA Chatbot — Inno Setup 6 Windows Installer Script
 ; Produces: MachineAI_Chatbot_Setup.exe
-; Target: Windows 10 (all builds), 64-bit
+; Target: Windows 10 (all builds, 64-bit) and Windows 11
 ; =============================================================================
 
 #define MyAppName      "ISRA Vision Chatbot"
 #define MyAppVersion   "2.0.0"
 #define MyAppPublisher "ISRA Vision"
 #define MyAppExeName   "IsraChatbot.exe"
-#define MyAppID        "{8B2F3C4D-1A2B-4E5F-9C0D-3E4F5A6B7C8D}"
 
 [Setup]
-AppId={#MyAppID}
+; NOTE: Use {{ to produce a literal { in Inno Setup
+AppId={{8B2F3C4D-1A2B-4E5F-9C0D-3E4F5A6B7C8D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
@@ -33,8 +33,7 @@ MinVersion=10.0.10240
 ; 64-bit only (Ollama and PyTorch require x64)
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
-; Show a friendly message on unsupported OS
-SetupMutex={#MyAppID}_Setup
+SetupMutex=ISRAVisionChatbot_Setup
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -56,17 +55,17 @@ Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; Clean up user data directory on uninstall (optional — comment out to keep user data)
+; Uncomment to wipe user data on uninstall:
 ; Type: filesandordirs; Name: "{localappdata}\ISRAVision\ISRAChatbot"
 
 [Code]
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  // Friendly error if somehow running on wrong arch
   if not Is64BitInstallMode() then
   begin
-    MsgBox('This application requires a 64-bit version of Windows 10 or later.', mbError, MB_OK);
+    MsgBox('This application requires a 64-bit version of Windows 10 or later.' + #13#10 +
+           'Please upgrade your system and try again.', mbError, MB_OK);
     Result := False;
   end;
 end;
