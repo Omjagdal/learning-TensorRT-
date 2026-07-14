@@ -52,7 +52,6 @@ if _IS_FROZEN:
         os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
 
     # Point Qdrant embedded storage and uploads to a writable user-data directory
-    # (the bundle itself may be read-only after installation)
     import platformdirs
     _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
     _user_data.mkdir(parents=True, exist_ok=True)
@@ -124,8 +123,6 @@ async def lifespan(app: FastAPI):
             page_index.load(mid, chunks)
 
     # 4. Eagerly import heavy ML libraries on main thread
-    # Prevents multithreading import race conditions (e.g., torch RpcBackendOptions error)
-    # when background threads try to import them simultaneously.
     try:
         import torch
         import transformers
@@ -134,7 +131,6 @@ async def lifespan(app: FastAPI):
         pass
 
     # 5. Background model loading
-    # Load ML models in background so server starts instantly
     threading.Thread(target=load_embedding_model, daemon=True).start()
     
     if settings.reranker_enabled:
@@ -215,14 +211,12 @@ if frontend_dist.exists():
         file_path = frontend_dist / f"{filename}.{ext}"
         if file_path.exists() and file_path.is_file():
             return FileResponse(str(file_path))
-        # Fallback to index.html (SPA routing)
         return FileResponse(str(frontend_dist / "index.html"))
 
     @app.get("/{catchall:path}", tags=["Frontend"])
     async def serve_frontend(catchall: str):
         if catchall.startswith("api/"):
             return {"detail": "Not Found"}
-        # Serve index.html for all other routes to support React Router
         index_path = frontend_dist / "index.html"
         if not index_path.exists():
             return {"message": "Frontend not built. Run 'npm run build' in frontend dir."}
@@ -230,12 +224,11 @@ if frontend_dist.exists():
 else:
     @app.get("/", tags=["Root"])
     async def root():
-        return {"message": f"Welcome to {settings.app_name}. Frontend not built. Run 'npm run build' in frontend dir.", "docs": "/docs"}
+        return {"message": f"Welcome to {settings.app_name}. Frontend not built.", "docs": "/docs"}
 
 
 if __name__ == "__main__":
     import multiprocessing
-    import platform
     import time
     import requests
     import uvicorn
@@ -269,7 +262,6 @@ if __name__ == "__main__":
             host=host,
             port=settings.port,
             workers=1,
-            # Suppress uvicorn's own startup banner — we handle that
             log_config=None,
         )
 
@@ -284,7 +276,7 @@ if __name__ == "__main__":
         # ── Wait for server to become healthy ─────────────────────────────────
         server_url = f"http://127.0.0.1:{settings.port}"
         logger.info(f"Waiting for server at {server_url}...")
-        for _ in range(60):   # up to 30 seconds
+        for _ in range(60):
             try:
                 if requests.get(server_url + "/api/v1/health", timeout=1).status_code == 200:
                     break
