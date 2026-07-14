@@ -52,7 +52,8 @@ if not exist "%ROOT%backend\build_venv\Scripts\activate.bat" (
 call "%ROOT%backend\build_venv\Scripts\activate.bat"
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu --no-cache-dir --no-compile --quiet
 pip install -r "%ROOT%backend\requirements.txt" --no-cache-dir --no-compile --quiet
-pip install pyinstaller pywebview platformdirs --no-cache-dir --no-compile --quiet
+:: pythonnet is required by pywebview on Windows (WinForms backend)
+pip install pyinstaller pywebview pythonnet platformdirs --no-cache-dir --no-compile --quiet
 echo [OK] Python environment ready.
 echo.
 

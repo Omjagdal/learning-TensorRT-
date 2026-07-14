@@ -48,28 +48,41 @@ if _ollama_models.exists():
 
 # ── Hidden imports ────────────────────────────────────────────────────────────
 hidden_imports = [
+    # Uvicorn ASGI server
     "uvicorn", "uvicorn.logging", "uvicorn.loops", "uvicorn.loops.auto",
     "uvicorn.protocols", "uvicorn.protocols.http", "uvicorn.protocols.http.auto",
     "uvicorn.protocols.websockets", "uvicorn.protocols.websockets.auto",
     "uvicorn.lifespan", "uvicorn.lifespan.on",
+    # FastAPI / Starlette
     "fastapi", "fastapi.middleware.cors",
-    "starlette", "starlette.routing", "starlette.staticfiles",
+    "starlette", "starlette.routing", "starlette.staticfiles", "starlette.responses",
+    # PyWebView — Windows uses WinForms (.NET/pythonnet)
     "webview", "webview.platforms.winforms", "webview.platforms.cocoa",
+    "webview.platforms.gtk", "webview.platforms.qt",
+    "clr", "clr_loader",          # pythonnet runtime (Windows WinForms)
+    # Pydantic
     "pydantic", "pydantic_settings", "pydantic.v1",
+    # Qdrant vector DB
     "qdrant_client", "qdrant_client.http", "qdrant_client.models",
+    "qdrant_client.http.models", "qdrant_client.http.api",
+    # ML / embeddings
     "sentence_transformers", "sentence_transformers.models",
     "FlagEmbedding", "FlagEmbedding.BGE_M3",
     "torch", "torch.nn", "torch.nn.functional", "torchvision",
     "transformers", "transformers.models.auto",
+    # PDF processing
     "marker", "marker.converters", "marker.models",
     "surya", "paddleocr", "paddlepaddle",
     "fitz", "pymupdf", "cv2", "PIL", "PIL.Image",
+    # Utilities
     "loguru", "aiofiles", "numpy", "tqdm",
     "rank_bm25", "tiktoken", "yaml", "requests", "httpx",
     "langchain", "langchain.text_splitter",
     "langchain_community", "langchain_core",
     "platformdirs",
     "multiprocessing", "multiprocessing.freeze_support",
+    "email.mime.text", "email.mime.multipart",  # needed by some httpx internals
+    "charset_normalizer",  # needed by requests on some Windows builds
 ]
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
@@ -83,10 +96,16 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        "torch.cuda", "torchvision.io",
+        # CUDA not needed — CPU-only build
+        "torch.cuda", "torch.cuda.amp", "torchvision.io",
+        # Test frameworks
         "pytest", "unittest", "hypothesis",
+        # Notebooks
         "jupyter", "ipython", "ipykernel",
+        # Plotting (not used in app)
         "matplotlib", "seaborn",
+        # Linux-only display backends
+        "tkinter", "_tkinter",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -106,13 +125,14 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,
+    console=False,           # No black terminal window on Windows
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch=None,        # Build for current arch (x64 on Windows runner)
     codesign_identity=None,
     entitlements_file=None,
     icon=str(project_root / "icon.ico") if (project_root / "icon.ico").exists() else None,
+    version=None,            # Can add version_info file here if needed
 )
 
 coll = COLLECT(

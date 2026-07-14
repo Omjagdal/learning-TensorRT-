@@ -107,10 +107,27 @@ ok "HuggingFace models cached"
 step 7 "Building standalone .app bundle with PyInstaller"
 pyinstaller --clean -y isra_chatbot.spec
 [[ -d "$ROOT/dist/IsraChatbot" ]] || { echo "[ERROR] PyInstaller failed!"; exit 1; }
-ok "PyInstaller build complete: dist/IsraChatbot/"
+[[ -d "$ROOT/dist/IsraChatbot.app" ]] || { echo "[ERROR] PyInstaller BUNDLE step failed — no .app created!"; exit 1; }
+ok "PyInstaller build complete"
+
+# ── Strip kernel-level xattrs (com.apple.provenance) and re-sign ──────────────
+# macOS tracks provenance of files installed via pip. These xattrs block
+# codesigning and cause the app to crash instantly when opened from Applications.
+# rsync with --no-xattrs copies cleanly into a fresh directory tree.
+echo "Stripping extended attributes and signing app bundle..."
+CLEAN_APP="$ROOT/dist/IsraChatbot_signed.app"
+rm -rf "$CLEAN_APP"
+mkdir -p "$CLEAN_APP"
+rsync -a --no-xattrs "$ROOT/dist/IsraChatbot.app/" "$CLEAN_APP/"
+codesign --force --deep --sign - "$CLEAN_APP" 2>&1 | grep -v 'replacing existing' || true
+codesign --verify --deep --strict "$CLEAN_APP" && ok "App signed and verified" || warn "Signing had warnings but proceeding"
+rm -rf "$ROOT/dist/IsraChatbot.app"
+mv "$CLEAN_APP" "$ROOT/dist/IsraChatbot.app"
+ok "App bundle ready: dist/IsraChatbot.app"
 
 step 8 "Creating .dmg installer"
 mkdir -p "$ROOT/dist/installer"
+rm -f "$ROOT/dist/installer/MachineAI_Chatbot_Setup.dmg"
 if command -v create-dmg >/dev/null 2>&1; then
     create-dmg \
         --volname "ISRA Vision Chatbot" \
@@ -120,7 +137,7 @@ if command -v create-dmg >/dev/null 2>&1; then
         --hide-extension "IsraChatbot.app" \
         --app-drop-link 425 185 \
         "$ROOT/dist/installer/MachineAI_Chatbot_Setup.dmg" \
-        "$ROOT/dist/IsraChatbot.app" || \
+        "$ROOT/dist/IsraChatbot.app" 2>&1 | grep -v 'hdiutil: internet-enable' || \
     hdiutil create -volname "ISRA Vision Chatbot" \
         -srcfolder "$ROOT/dist/IsraChatbot.app" \
         -ov -format UDZO \
