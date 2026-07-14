@@ -125,3 +125,15 @@ coll = COLLECT(
     upx_exclude=[],
     name="IsraChatbot",
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name='IsraChatbot.app',
+        icon=str(project_root / "icon.png") if (project_root / "icon.png").exists() else None,
+        bundle_identifier=None,
+        info_plist={
+            'NSHighResolutionCapable': 'True',
+            'LSBackgroundOnly': 'False',
+        },
+    )

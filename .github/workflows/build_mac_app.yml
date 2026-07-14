@@ -42,12 +42,14 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller pywebview platformdirs
 
-    - name: Download Ollama Mac binary (arm64)
+    - name: Download Ollama Mac binary
       run: |
         mkdir -p bundle_assets/ollama
-        curl -fsSL "https://github.com/ollama/ollama/releases/latest/download/ollama-darwin-arm64" \
-             -o bundle_assets/ollama/ollama
+        curl -fsSL -L "https://github.com/ollama/ollama/releases/latest/download/ollama-darwin.tgz" \
+             -o bundle_assets/ollama/ollama-darwin.tgz
+        tar -xzf bundle_assets/ollama/ollama-darwin.tgz -C bundle_assets/ollama
         chmod +x bundle_assets/ollama/ollama
+        rm -f bundle_assets/ollama/ollama-darwin.tgz
 
     - name: Cache Ollama models
       id: cache-ollama-models

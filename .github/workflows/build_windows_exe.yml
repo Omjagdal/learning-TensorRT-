@@ -34,13 +34,13 @@ jobs:
         python-version: '3.11'
 
     - name: Install CPU-only PyTorch
-      run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu --no-cache-dir --no-compile
 
     - name: Install Python dependencies
       working-directory: ./backend
       run: |
-        pip install -r requirements.txt
-        pip install pyinstaller pywebview platformdirs
+        pip install -r requirements.txt --no-cache-dir --no-compile
+        pip install pyinstaller pywebview platformdirs --no-cache-dir --no-compile
 
     - name: Download Ollama Windows binary
       shell: pwsh

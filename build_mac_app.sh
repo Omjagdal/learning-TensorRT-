@@ -23,8 +23,17 @@ echo -e "${RESET}"
 
 step 1 "Checking prerequisites"
 command -v node    >/dev/null 2>&1 || { echo "[ERROR] Node.js not found. Run: brew install node"; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "[ERROR] Python 3 not found. Run: brew install python@3.11"; exit 1; }
-ok "Prerequisites found"
+
+# Prefer python3.11, fallback to python3 if it's the right version
+if command -v python3.11 >/dev/null 2>&1; then
+    PYTHON_CMD="python3.11"
+elif command -v python3.10 >/dev/null 2>&1; then
+    PYTHON_CMD="python3.10"
+else
+    PYTHON_CMD="python3"
+fi
+$PYTHON_CMD --version >/dev/null 2>&1 || { echo "[ERROR] Python not found. Run: brew install python@3.11"; exit 1; }
+ok "Prerequisites found ($PYTHON_CMD)"
 
 step 2 "Building React Frontend"
 cd "$ROOT/frontend"
@@ -36,27 +45,24 @@ ok "Frontend built"
 
 step 3 "Setting up Python build environment"
 BUILD_VENV="$ROOT/backend/build_venv"
-[[ -f "$BUILD_VENV/bin/activate" ]] || python3 -m venv "$BUILD_VENV"
+[[ -f "$BUILD_VENV/bin/activate" ]] || $PYTHON_CMD -m venv "$BUILD_VENV"
 source "$BUILD_VENV/bin/activate"
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu -q
-pip install -r "$ROOT/backend/requirements.txt" -q
-pip install pyinstaller pywebview platformdirs -q
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu --no-cache-dir --no-compile -q
+pip install -r "$ROOT/backend/requirements.txt" --no-cache-dir --no-compile -q
+pip install pyinstaller pywebview platformdirs --no-cache-dir --no-compile -q
 ok "Python environment ready"
 
 step 4 "Preparing bundled Ollama binary"
 OLLAMA_DIR="$ROOT/bundle_assets/ollama"
 mkdir -p "$OLLAMA_DIR"
-ARCH="$(uname -m)"
-if [[ "$ARCH" == "arm64" ]]; then
-    OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-darwin-arm64"
-else
-    OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-darwin-amd64"
-fi
+OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-darwin.tgz"
 if [[ ! -f "$OLLAMA_DIR/ollama" ]]; then
-    echo "Downloading Ollama for macOS ($ARCH)..."
-    curl -fsSL "$OLLAMA_URL" -o "$OLLAMA_DIR/ollama"
+    echo "Downloading Ollama for macOS..."
+    curl -fsSL -L "$OLLAMA_URL" -o "$OLLAMA_DIR/ollama-darwin.tgz"
+    tar -xzf "$OLLAMA_DIR/ollama-darwin.tgz" -C "$OLLAMA_DIR"
     chmod +x "$OLLAMA_DIR/ollama"
-    ok "Ollama binary downloaded"
+    rm -f "$OLLAMA_DIR/ollama-darwin.tgz"
+    ok "Ollama binary downloaded and extracted"
 else
     ok "Ollama binary already present"
 fi
