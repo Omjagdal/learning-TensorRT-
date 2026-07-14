@@ -1,0 +1,80 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node / JS
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Frontend Build
+frontend/dist/
+frontend/build/
+
+# Mac / OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Gemini / Antigravity
+.gemini/
+
+# App Data 
+backend/logs/*
+!backend/logs/.gitkeep
+
+# Archives and Packages
+*.zip
+*.tar.gz
+ISRA_Windows_*
+*.exe
+*.dll
+*.dylib

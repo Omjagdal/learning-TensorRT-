@@ -1,0 +1,37 @@
+[
+  {
+    "chunk_id": "0cf953ae_0",
+    "manual_id": "0cf953ae",
+    "manual_name": "20220225_EN_System_Topology_RTV.3d  (2)",
+    "filename": "20220225_EN_System_Topology_RTV.3d  (2).pdf",
+    "chapter": "Unknown Chapter",
+    "section": "System Topology - Standalone",
+    "page": 0,
+    "chunk_index": 0,
+    "text": "QUISS Components\n1.\nCompact Cabinet\n2.\nVision Controller 3D\n3.\nExternal power supply cable (1-, 2- & 3-parted)\n4.\nExternal data cable (1-, 2- & 3-parted)\n5.\nSensor",
+    "content_type": "text",
+    "has_tables": false,
+    "has_images": false,
+    "images_referenced": [],
+    "hierarchy_path": "20220225_EN_System_Topology_RTV.3d  (2) > Unknown Chapter > System Topology - Standalone"
+  },
+  {
+    "chunk_id": "0cf953ae_1",
+    "manual_id": "0cf953ae",
+    "manual_name": "20220225_EN_System_Topology_RTV.3d  (2)",
+    "filename": "20220225_EN_System_Topology_RTV.3d  (2).pdf",
+    "chapter": "Unknown Chapter",
+    "section": "System Topology - Integrated",
+    "page": 0,
+    "chunk_index": 1,
+    "text": "QUISS components\n1.\nVision-PC 3D\n2.\nInternal power supply cable\n3.\nInternal data cable\n4.\nExternal power supply cable (1-, 2- & 3-parted)\n5.\nExternal data cable (1-, 2- & 3-parted)\n6.\nSensor\n7 eletric connection 8 system architecture  \n![Page 0](page_0.png)  \n![Page 1](page_1.png)",
+    "content_type": "text",
+    "has_tables": false,
+    "has_images": true,
+    "images_referenced": [
+      "page_0.png",
+      "page_1.png"
+    ],
+    "hierarchy_path": "20220225_EN_System_Topology_RTV.3d  (2) > Unknown Chapter > System Topology - Integrated"
+  }
+]

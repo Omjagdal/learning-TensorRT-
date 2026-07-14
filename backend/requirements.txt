@@ -45,10 +45,8 @@ loguru==0.7.2
 pyyaml>=6.0
 tiktoken>=0.7.0
 pywebview>=4.4.1
+platformdirs>=4.1.0
 Pillow>=10.0.0
-paddlepaddle
-paddleocr
-
 # ── PDF Page Rendering & OCR Support ─────────────────────────────────────────
 PyMuPDF>=1.24.0
 opencv-python-headless>=4.8.0

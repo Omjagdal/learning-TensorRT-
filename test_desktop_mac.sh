@@ -20,16 +20,20 @@ cd ..
 
 echo ""
 echo "2. Starting Backend and Desktop Window..."
-# Ensure backend dependencies are installed
 cd backend
-source venv/bin/activate || echo "No venv found, using system Python"
+if [ ! -f "venv/bin/activate" ]; then
+    echo "Virtual environment not found. Creating one now..."
+    python3 -m venv venv || python -m venv venv
+fi
+source venv/bin/activate
 pip install -r requirements.txt
 
 echo ""
 echo "3. Creating Desktop Shortcut for Mac..."
 cat << EOF > "$HOME/Desktop/Isra Chatbot.command"
 #!/bin/bash
-cd "$(dirname "$PWD")"
+cd "$PWD"
+cd ..
 bash test_desktop_mac.sh
 EOF
 chmod +x "$HOME/Desktop/Isra Chatbot.command"
@@ -37,4 +41,4 @@ echo "A shortcut 'Isra Chatbot.command' has been created on your Mac Desktop!"
 echo ""
 
 echo "4. Launching App..."
-python main.py
+python3 main.py || python main.py

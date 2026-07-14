@@ -1,8 +1,13 @@
 """
 main.py — FastAPI application entry point.
+Supports three run modes:
+  1. Development  — plain `python main.py` with system Ollama
+  2. Docker       — headless, DOCKER_ENV=true, Ollama is external
+  3. Desktop .exe — PyInstaller frozen, OllamaManager starts bundled Ollama
 """
 
 from contextlib import asynccontextmanager
+import sys
 import threading
 import logging as builtin_logging
 
@@ -30,15 +35,45 @@ from app.reranker.cross_encoder import _load_model as load_reranker_model
 from app.services.pdf_service import list_manuals, get_chunks_for_manual
 from app.schemas import HealthResponse
 
-settings = get_settings()
-
 import os
-if settings.offline_mode:
+
+# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
+# Must happen BEFORE importing settings so env vars are in place.
+_IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+if _IS_FROZEN:
+    _bundle_root = Path(sys.executable).parent
+
+    # Point HuggingFace to the bundled model cache
+    _hf_cache = _bundle_root / "hf_cache"
+    if _hf_cache.exists():
+        os.environ["HF_HOME"] = str(_hf_cache)
+        os.environ["TRANSFORMERS_CACHE"] = str(_hf_cache / "hub")
+        os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
+
+    # Point Qdrant embedded storage and uploads to a writable user-data directory
+    # (the bundle itself may be read-only after installation)
+    import platformdirs
+    _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
+    _user_data.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("QDRANT_EMBEDDED_PATH", str(_user_data / "qdrant_storage"))
+    os.environ.setdefault("UPLOAD_DIR", str(_user_data / "manuals"))
+
+    # Force fully offline — no model downloads at runtime
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
     os.environ["HF_DATASETS_OFFLINE"] = "1"
     os.environ["MARKER_TELEMETRY"] = "false"
-    # Prevent PaddleOCR from downloading models at runtime
+    os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
+
+settings = get_settings()
+
+if settings.offline_mode and not _IS_FROZEN:
+    # Development offline mode — same guards, but paths already correct
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+    os.environ["MARKER_TELEMETRY"] = "false"
     os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
 
 
@@ -163,7 +198,12 @@ async def health():
     )
 
 
-frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if _IS_FROZEN:
+    # PyInstaller --onedir: frontend/dist is bundled alongside the .exe
+    frontend_dist = Path(sys.executable).parent / "frontend" / "dist"
+else:
+    # Development: standard relative path from the backend folder
+    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 
 if frontend_dist.exists():
     # Serve all static assets from the dist folder (JS, CSS, images, logo.png)
@@ -196,69 +236,85 @@ else:
 if __name__ == "__main__":
     import multiprocessing
     import platform
-    import subprocess
-    import threading
     import time
     import requests
     import uvicorn
-    import webview
 
-    # Freeze support for PyInstaller
+    # ── PyInstaller freeze support (must be first) ─────────────────────────────
     multiprocessing.freeze_support()
 
-    # Check and start Ollama
-    if platform.system() == "Windows":
-        try:
-            output = subprocess.check_output(
-                'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
-            ).decode()
-            if "ollama.exe" not in output:
-                logger.info("Ollama is not running. Starting ollama serve...")
-                subprocess.Popen(
-                    ["ollama", "serve"], creationflags=subprocess.CREATE_NO_WINDOW
-                )
-            else:
-                logger.info("Ollama is already running.")
-        except Exception as e:
-            logger.error(f"Failed to check or start Ollama: {e}")
-    elif platform.system() == "Darwin":  # macOS
-        try:
-            result = subprocess.run(
-                ["pgrep", "-x", "ollama"],
-                capture_output=True, text=True,
+    # ── Detect Docker headless mode ───────────────────────────────────────────
+    is_docker = os.environ.get("DOCKER_ENV") == "true"
+
+    # ── Desktop mode: start Ollama via OllamaManager ──────────────────────────
+    if not is_docker:
+        from app.core.ollama_manager import start_ollama, stop_ollama
+        import webview
+
+        logger.info("Desktop mode — initializing Ollama manager...")
+        ollama_ok = start_ollama()
+        if not ollama_ok:
+            logger.warning(
+                "Ollama could not be started. The LLM will be unavailable. "
+                "Check that the bundled Ollama binary and models are present."
             )
-            if result.returncode != 0:
-                logger.info("Ollama is not running on macOS. Starting ollama serve...")
-                subprocess.Popen(
-                    ["ollama", "serve"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                time.sleep(2)  # Give Ollama a moment to start
-            else:
-                logger.info("Ollama is already running on macOS.")
-        except Exception as e:
-            logger.warning(f"Could not check/start Ollama on macOS: {e}")
 
+    # ── Server runner ─────────────────────────────────────────────────────────
     def run_server():
-        logger.info("Starting production server via Uvicorn...")
-        uvicorn.run("main:app", host=settings.host, port=settings.port, workers=1)
+        """Start the FastAPI/Uvicorn server."""
+        logger.info("Starting FastAPI server via Uvicorn...")
+        host = "0.0.0.0" if is_docker else "127.0.0.1"
+        uvicorn.run(
+            "main:app",
+            host=host,
+            port=settings.port,
+            workers=1,
+            # Suppress uvicorn's own startup banner — we handle that
+            log_config=None,
+        )
 
-    # Start FastAPI in a background thread
-    t = threading.Thread(target=run_server, daemon=True)
-    t.start()
+    if is_docker:
+        # Docker: run blocking on the main thread
+        run_server()
+    else:
+        # Desktop: run server in background thread, open native window
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
 
-    # Wait for server to start
-    # WebView cannot resolve 0.0.0.0, so we use 127.0.0.1
-    server_url = f"http://127.0.0.1:{settings.port}"
-    for _ in range(30):
-        try:
-            if requests.get(server_url + "/api/v1/health").status_code == 200:
-                break
-        except Exception:
+        # ── Wait for server to become healthy ─────────────────────────────────
+        server_url = f"http://127.0.0.1:{settings.port}"
+        logger.info(f"Waiting for server at {server_url}...")
+        for _ in range(60):   # up to 30 seconds
+            try:
+                if requests.get(server_url + "/api/v1/health", timeout=1).status_code == 200:
+                    break
+            except Exception:
+                pass
             time.sleep(0.5)
 
-    # Create native desktop window
-    logger.info("Starting Desktop Window...")
-    webview.create_window(settings.app_name, server_url, width=1200, height=800)
-    webview.start(private_mode=False)
+        # ── Open native desktop window ─────────────────────────────────────────
+        logger.info("Opening native desktop window...")
+        window = webview.create_window(
+            settings.app_name,
+            server_url,
+            width=1400,
+            height=860,
+            min_size=(900, 600),
+            resizable=True,
+        )
+
+        def on_window_closed():
+            """Called by pywebview when the user closes the window."""
+            logger.info("Window closed — shutting down...")
+            stop_ollama()
+
+        window.events.closed += on_window_closed
+
+        # Start the webview event loop (blocks until window is closed)
+        webview.start(
+            private_mode=False,
+            debug=settings.debug,
+        )
+
+        # Clean shutdown after window closes
+        logger.info("Application exiting.")

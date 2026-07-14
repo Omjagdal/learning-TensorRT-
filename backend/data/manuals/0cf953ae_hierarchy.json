@@ -1,0 +1,23 @@
+{
+  "chapters": [
+    {
+      "title": "Unknown Chapter",
+      "sections": [
+        {
+          "title": "System Topology - Standalone",
+          "pages": [
+            0
+          ],
+          "chunk_count": 1
+        },
+        {
+          "title": "System Topology - Integrated",
+          "pages": [
+            0
+          ],
+          "chunk_count": 1
+        }
+      ]
+    }
+  ]
+}

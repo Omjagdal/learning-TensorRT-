@@ -290,15 +290,24 @@ function SourceItem({ source, index }) {
 
 export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }) {
   const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const bodyRef = useRef(null)
   const image = images[currentIndex]
 
   useEffect(() => {
     setZoom(1)
+    setPan({ x: 0, y: 0 })
   }, [currentIndex])
 
-  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3))
-  const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.5))
-  const handleReset = () => setZoom(1)
+  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 5))
+  const handleZoomOut = () => setZoom(z => {
+    const newZ = Math.max(z - 0.25, 0.25)
+    if (newZ <= 1) setPan({ x: 0, y: 0 })
+    return newZ
+  })
+  const handleReset = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
 
   const handlePrev = useCallback((e) => {
     if (e) e.stopPropagation()
@@ -310,25 +319,67 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
     onChangeIndex(currentIndex < images.length - 1 ? currentIndex + 1 : 0)
   }, [currentIndex, images.length, onChangeIndex])
 
-  const handleWheel = useCallback((e) => {
-    // Use wheel delta to zoom in or out
-    const zoomIntensity = 0.005;
-    const delta = e.deltaY;
-    setZoom(z => {
-      const newZoom = z - delta * zoomIntensity;
-      return Math.max(0.2, Math.min(newZoom, 5));
-    });
-  }, []);
+  // Attach non-passive wheel listener so preventDefault() actually works
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const zoomIntensity = 0.002
+      const delta = e.deltaY
+      setZoom(z => {
+        const newZoom = Math.max(0.25, Math.min(z - delta * zoomIntensity, 5))
+        if (newZoom <= 1) setPan({ x: 0, y: 0 })
+        return newZoom
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose()
       else if (e.key === 'ArrowLeft') handlePrev()
       else if (e.key === 'ArrowRight') handleNext()
+      else if (e.key === '+' || e.key === '=') handleZoomIn()
+      else if (e.key === '-') handleZoomOut()
+      else if (e.key === '0') handleReset()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose, handlePrev, handleNext])
+
+  const handlePointerDown = (e) => {
+    if (zoom <= 1) return
+    e.preventDefault()
+    setIsDragging(true)
+    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
+  }
+
+  const handlePointerMove = useCallback((e) => {
+    if (!isDragging || zoom <= 1) return
+    setPan({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y
+    })
+  }, [isDragging, zoom])
+
+  const handlePointerUp = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('pointermove', handlePointerMove)
+      window.addEventListener('pointerup', handlePointerUp)
+      return () => {
+        window.removeEventListener('pointermove', handlePointerMove)
+        window.removeEventListener('pointerup', handlePointerUp)
+      }
+    }
+  }, [isDragging, handlePointerMove, handlePointerUp])
 
   return (
     <div className="diagram-lightbox-overlay" onClick={onClose}>
@@ -339,16 +390,16 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
             📄 Page {image.page} — {image.hierarchy} ({currentIndex + 1} / {images.length})
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={handleZoomOut} className="diagram-lightbox-btn" title="Zoom out">
+            <button onClick={handleZoomOut} className="diagram-lightbox-btn" title="Zoom out (-)">
               <ZoomOut size={14} />
             </button>
             <span className="text-[11px] font-mono px-2" style={{ color: 'var(--text-muted)' }}>
               {Math.round(zoom * 100)}%
             </span>
-            <button onClick={handleZoomIn} className="diagram-lightbox-btn" title="Zoom in">
+            <button onClick={handleZoomIn} className="diagram-lightbox-btn" title="Zoom in (+)">
               <ZoomIn size={14} />
             </button>
-            <button onClick={handleReset} className="diagram-lightbox-btn" title="Reset zoom">
+            <button onClick={handleReset} className="diagram-lightbox-btn" title="Reset zoom (0)">
               <RotateCw size={14} />
             </button>
             <button onClick={onClose} className="diagram-lightbox-btn diagram-lightbox-close" title="Close">
@@ -357,20 +408,31 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
           </div>
         </div>
         {/* Image container */}
-        <div className="diagram-lightbox-body relative" onWheel={handleWheel}>
+        <div 
+          ref={bodyRef} 
+          className="diagram-lightbox-body relative" 
+          style={{ overflow: 'hidden' }}
+          onPointerDown={handlePointerDown}
+        >
           {images.length > 1 && (
-            <button onClick={handlePrev} className="absolute left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Previous (Left Arrow)">
+            <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Previous (Left Arrow)">
               <ChevronLeft size={24} />
             </button>
           )}
           <img
             src={image.url}
             alt={`Manual diagram — Page ${image.page}`}
-            style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.05s ease-out' }}
+            style={{ 
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, 
+              transformOrigin: 'center center', 
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+            }}
             className="diagram-lightbox-img"
+            draggable={false}
           />
           {images.length > 1 && (
-            <button onClick={handleNext} className="absolute right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Next (Right Arrow)">
+            <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Next (Right Arrow)">
               <ChevronRight size={24} />
             </button>
           )}

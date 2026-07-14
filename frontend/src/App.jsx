@@ -8,14 +8,14 @@ import KnowledgeInfo from './components/KnowledgeInfo'
 import FolderView from './components/FolderView'
 
 const SUGGESTION_PROMPTS = [
-  'Explain me the SOP(standard operating procedure) diagram & its steps',
-  "What are the Do's and Don'ts?",
-  'Explain vision teaching and parametrization steps.',
-  'What are the limits for bead width?',
-  'How does the image recording sequence work?',
-  'Describe the control architecture of quiss vision2d .',
-  'What are the electrical connections with diagram?',
-  'Provide hardware information about sensors and cables diagram.'
+  "Explain the SOP (Standard Operating Procedure) diagram & its steps.",
+  "What are the key Do's and Don'ts?",
+  "Explain the vision teaching and parametrization steps.",
+  "What are the limits for Bead Width and how do I set them in teach mode? Provide an example.",
+  "How does the image recording sequence work?",
+  "Describe the control architecture of the QUISS Vision2D.",
+  "Show me the electrical connections with a diagram.",
+  "Provide hardware information about sensors and cables with a diagram."
 ]
 
 function EmptyState({ onSend, disabled }) {
