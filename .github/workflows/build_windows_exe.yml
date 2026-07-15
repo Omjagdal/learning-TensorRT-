@@ -9,7 +9,7 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
     - name: Checkout repository
@@ -33,12 +33,18 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Upgrade pip and install packaging first
+      run: |
+        python -m pip install --upgrade pip
+        pip install "packaging>=24.2" --no-cache-dir
+
     - name: Install CPU-only PyTorch
       run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu --no-cache-dir --no-compile
 
     - name: Install Python dependencies
       working-directory: ./backend
       run: |
+        pip install "numpy<2.0.0" --no-cache-dir --no-compile
         pip install -r requirements.txt --no-cache-dir --no-compile
         pip install pyinstaller pywebview pythonnet platformdirs --no-cache-dir --no-compile
 
@@ -55,7 +61,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: bundle_assets/ollama_models
-        key: ollama-models-qwen3-8b-bge-m3-v1
+        key: ollama-models-qwen3-8b-bge-m3-v2
 
     - name: Pull AI models into bundle_assets
       if: steps.cache-ollama-models.outputs.cache-hit != 'true'
@@ -64,7 +70,7 @@ jobs:
         $env:OLLAMA_MODELS = "$(Get-Location)\bundle_assets\ollama_models"
         New-Item -ItemType Directory -Force -Path $env:OLLAMA_MODELS
         Start-Process -NoNewWindow "bundle_assets\ollama\ollama.exe" -ArgumentList "serve"
-        Start-Sleep -Seconds 10
+        Start-Sleep -Seconds 15
         & "bundle_assets\ollama\ollama.exe" pull qwen3:8b
         & "bundle_assets\ollama\ollama.exe" pull bge-m3
         Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue
@@ -74,7 +80,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: bundle_assets/hf_cache
-        key: hf-models-bge-reranker-large-v1
+        key: hf-models-bge-reranker-large-v2
 
     - name: Download HuggingFace models
       if: steps.cache-hf-models.outputs.cache-hit != 'true'
@@ -85,7 +91,21 @@ jobs:
         python -c "from sentence_transformers import CrossEncoder; CrossEncoder('BAAI/bge-reranker-large'); print('Done.')"
 
     - name: Build with PyInstaller
-      run: pyinstaller --clean -y isra_chatbot.spec
+      shell: pwsh
+      env:
+        # Increase PyInstaller memory limits for large AI bundles
+        PYTHONMALLOC: default
+      run: |
+        pyinstaller --clean -y isra_chatbot.spec
+
+    - name: Verify build output
+      shell: pwsh
+      run: |
+        if (!(Test-Path "dist\IsraChatbot\IsraChatbot.exe")) {
+          Write-Error "PyInstaller failed - IsraChatbot.exe not found!"
+          exit 1
+        }
+        Write-Host "Build successful! EXE size: $((Get-Item dist\IsraChatbot\IsraChatbot.exe).Length / 1MB) MB"
 
     - name: Install Inno Setup
       run: choco install innosetup -y
@@ -96,10 +116,15 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path "dist\installer"
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\windows_setup.iss"
+        if (!(Test-Path "dist\installer\MachineAI_Chatbot_Setup.exe")) {
+          Write-Error "Inno Setup failed - installer not created!"
+          exit 1
+        }
+        Write-Host "Installer created! Size: $((Get-Item dist\installer\MachineAI_Chatbot_Setup.exe).Length / 1MB) MB"
 
     - name: Upload Windows Installer
       uses: actions/upload-artifact@v4
       with:
         name: MachineAI-Chatbot-Windows-Setup
         path: dist/installer/MachineAI_Chatbot_Setup.exe
-        retention-days: 14
+        retention-days: 30

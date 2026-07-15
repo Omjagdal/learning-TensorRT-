@@ -100,12 +100,21 @@ a = Analysis(
         "torch.cuda", "torch.cuda.amp", "torchvision.io",
         # Test frameworks
         "pytest", "unittest", "hypothesis",
-        # Notebooks
+        # Notebooks / dev tools
         "jupyter", "ipython", "ipykernel",
         # Plotting (not used in app)
         "matplotlib", "seaborn",
         # Linux-only display backends
         "tkinter", "_tkinter",
+        # Heavy OCR / PDF processing deps not needed at runtime
+        # (PDFs are processed via marker API calls, not direct imports)
+        "paddlepaddle", "paddle", "paddleocr",
+        "surya",
+        # Unused torch sub-packages that are large
+        "torch.distributed", "torch.multiprocessing",
+        "torch.testing", "torch._dynamo",
+        # Unused transformers backends
+        "transformers.integrations",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
