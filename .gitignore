@@ -5,8 +5,6 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-dist/
-build/
 *.egg
 
 # ── Virtual environments ──────────────────────────────────────────────────────
@@ -22,7 +20,17 @@ dist/
 build/
 *.spec.bak
 
-# ── Bundle assets (large model files — do NOT commit to git) ──────────────────
+# ── Runtime data (qdrant DB, uploaded manuals) ────────────────────────────────
+data/
+backend/data/
+qdrant_storage/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend/logs/
+
+# ── Bundle assets (large model/binary files — built locally, not committed) ──
 bundle_assets/
 
 # ── Node / Frontend ───────────────────────────────────────────────────────────
@@ -35,19 +43,11 @@ frontend/dist/
 .env.*
 !.env.example
 
-# ── Logs ─────────────────────────────────────────────────────────────────────
-*.log
-logs/
-backend/logs/
-
-# ── Database / storage ────────────────────────────────────────────────────────
-qdrant_storage/
-backend/data/uploads/
-
 # ── OS junk ───────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
+*~
 
 # ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/
@@ -58,5 +58,12 @@ desktop.ini
 # ── Large archive files ───────────────────────────────────────────────────────
 *.tar
 *.tar.gz
+*.tgz
 *.zip
 *.7z
+*.dmg
+
+# ── Temporary / scratch ───────────────────────────────────────────────────────
+/tmp/
+*.tmp
+*.temp
