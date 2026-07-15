@@ -6,15 +6,65 @@ Supports three run modes:
   3. Desktop .exe — PyInstaller frozen, OllamaManager starts bundled Ollama
 """
 
-from contextlib import asynccontextmanager
 import sys
+import os
+from pathlib import Path
+
+# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
+# CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are in place
+# before pydantic-settings reads them or before module-level code runs mkdir().
+_IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+if _IS_FROZEN:
+    _bundle_root = Path(sys.executable).parent
+    import platformdirs
+
+    # ── PORTABLE MODE: check for models/ folder next to the .exe ──────────────
+    _portable_models = _bundle_root / "models"
+    _portable_ollama  = _portable_models / "ollama_models"
+    _portable_hf      = _portable_models / "hf_cache"
+    _is_portable_mode = _portable_models.exists()
+
+    # ── INSTALLED MODE: use AppData\Local\ISRAVision\ISRAChatbot ──────────────
+    _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
+    _user_data.mkdir(parents=True, exist_ok=True)
+
+    if _is_portable_mode and _portable_hf.exists():
+        _hf_cache = _portable_hf
+    else:
+        _hf_cache = _user_data / "hf_cache"
+        _hf_cache.mkdir(parents=True, exist_ok=True)
+
+    if _is_portable_mode and _portable_ollama.exists():
+        _ollama_models_dir = _portable_ollama
+    else:
+        _ollama_models_dir = _user_data / "ollama_models"
+        _ollama_models_dir.mkdir(parents=True, exist_ok=True)
+
+    os.environ["HF_HOME"] = str(_hf_cache)
+    os.environ["TRANSFORMERS_CACHE"] = str(_hf_cache / "hub")
+    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
+    os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
+
+    os.environ.setdefault("QDRANT_EMBEDDED_PATH", str(_user_data / "qdrant_storage"))
+    os.environ.setdefault("UPLOAD_DIR", str(_user_data / "manuals"))
+    os.environ["MARKER_TELEMETRY"] = "false"
+    os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
+
+    _hf_models_ready = (_hf_cache / "hub" / "models--BAAI--bge-reranker-large").exists()
+    if _hf_models_ready:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        os.environ["HF_DATASETS_OFFLINE"] = "1"
+
+# Now we can safely import our app modules, because os.environ is fully populated.
+from contextlib import asynccontextmanager
 import threading
 import logging as builtin_logging
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
@@ -34,66 +84,6 @@ from app.embeddings.bge_m3 import _load_model as load_embedding_model
 from app.reranker.cross_encoder import _load_model as load_reranker_model
 from app.services.pdf_service import list_manuals, get_chunks_for_manual
 from app.schemas import HealthResponse
-
-import os
-
-# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
-# Must happen BEFORE importing settings so env vars are in place.
-_IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
-
-if _IS_FROZEN:
-    _bundle_root = Path(sys.executable).parent
-    import platformdirs
-
-    # ── PORTABLE MODE: check for models/ folder next to the .exe ──────────────
-    # User can copy models from another PC and place them here for instant offline use.
-    # Folder structure expected:
-    #   <app_dir>/models/ollama_models/   ← Ollama models (blobs + manifests)
-    #   <app_dir>/models/hf_cache/        ← HuggingFace models (hub/)
-    _portable_models = _bundle_root / "models"
-    _portable_ollama  = _portable_models / "ollama_models"
-    _portable_hf      = _portable_models / "hf_cache"
-    _is_portable_mode = _portable_models.exists()
-
-    # ── INSTALLED MODE: use AppData\Local\ISRAVision\ISRAChatbot ──────────────
-    _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
-    _user_data.mkdir(parents=True, exist_ok=True)
-
-    # Choose model directories: portable takes priority over AppData
-    if _is_portable_mode and _portable_hf.exists():
-        _hf_cache = _portable_hf
-        logger.info(f"[PORTABLE] Using HF models from: {_hf_cache}")
-    else:
-        _hf_cache = _user_data / "hf_cache"
-        _hf_cache.mkdir(parents=True, exist_ok=True)
-
-    if _is_portable_mode and _portable_ollama.exists():
-        _ollama_models_dir = _portable_ollama
-        logger.info(f"[PORTABLE] Using Ollama models from: {_ollama_models_dir}")
-    else:
-        _ollama_models_dir = _user_data / "ollama_models"
-        _ollama_models_dir.mkdir(parents=True, exist_ok=True)
-
-    # Apply model paths to environment
-    os.environ["HF_HOME"] = str(_hf_cache)
-    os.environ["TRANSFORMERS_CACHE"] = str(_hf_cache / "hub")
-    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
-    os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
-
-    # Qdrant and uploads always go to AppData (writable, persistent)
-    os.environ.setdefault("QDRANT_EMBEDDED_PATH", str(_user_data / "qdrant_storage"))
-    os.environ.setdefault("UPLOAD_DIR", str(_user_data / "manuals"))
-
-    os.environ["MARKER_TELEMETRY"] = "false"
-    os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
-
-    # Go fully offline if HF models are present (either portable or AppData)
-    _hf_models_ready = (_hf_cache / "hub" / "models--BAAI--bge-reranker-large").exists()
-    if _hf_models_ready:
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-        os.environ["HF_DATASETS_OFFLINE"] = "1"
-
 
 settings = get_settings()
 
