@@ -45,31 +45,49 @@ if _IS_FROZEN:
     _bundle_root = Path(sys.executable).parent
     import platformdirs
 
-    # User-writable data directory (AppData\Local\ISRAVision\ISRAChatbot on Windows)
+    # ── PORTABLE MODE: check for models/ folder next to the .exe ──────────────
+    # User can copy models from another PC and place them here for instant offline use.
+    # Folder structure expected:
+    #   <app_dir>/models/ollama_models/   ← Ollama models (blobs + manifests)
+    #   <app_dir>/models/hf_cache/        ← HuggingFace models (hub/)
+    _portable_models = _bundle_root / "models"
+    _portable_ollama  = _portable_models / "ollama_models"
+    _portable_hf      = _portable_models / "hf_cache"
+    _is_portable_mode = _portable_models.exists()
+
+    # ── INSTALLED MODE: use AppData\Local\ISRAVision\ISRAChatbot ──────────────
     _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
     _user_data.mkdir(parents=True, exist_ok=True)
 
-    # Models are stored in user data dir (downloaded on first launch)
-    _hf_cache = _user_data / "hf_cache"
-    _hf_cache.mkdir(parents=True, exist_ok=True)
+    # Choose model directories: portable takes priority over AppData
+    if _is_portable_mode and _portable_hf.exists():
+        _hf_cache = _portable_hf
+        logger.info(f"[PORTABLE] Using HF models from: {_hf_cache}")
+    else:
+        _hf_cache = _user_data / "hf_cache"
+        _hf_cache.mkdir(parents=True, exist_ok=True)
+
+    if _is_portable_mode and _portable_ollama.exists():
+        _ollama_models_dir = _portable_ollama
+        logger.info(f"[PORTABLE] Using Ollama models from: {_ollama_models_dir}")
+    else:
+        _ollama_models_dir = _user_data / "ollama_models"
+        _ollama_models_dir.mkdir(parents=True, exist_ok=True)
+
+    # Apply model paths to environment
     os.environ["HF_HOME"] = str(_hf_cache)
     os.environ["TRANSFORMERS_CACHE"] = str(_hf_cache / "hub")
     os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
-
-    # Ollama models also live in user data dir
-    _ollama_models_dir = _user_data / "ollama_models"
-    _ollama_models_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
 
-    # Qdrant and uploads
+    # Qdrant and uploads always go to AppData (writable, persistent)
     os.environ.setdefault("QDRANT_EMBEDDED_PATH", str(_user_data / "qdrant_storage"))
     os.environ.setdefault("UPLOAD_DIR", str(_user_data / "manuals"))
 
     os.environ["MARKER_TELEMETRY"] = "false"
     os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
 
-    # Only go fully offline AFTER first-launch setup has run
-    # (first launch needs internet to download models)
+    # Go fully offline if HF models are present (either portable or AppData)
     _hf_models_ready = (_hf_cache / "hub" / "models--BAAI--bge-reranker-large").exists()
     if _hf_models_ready:
         os.environ["HF_HUB_OFFLINE"] = "1"
