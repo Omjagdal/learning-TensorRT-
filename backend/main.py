@@ -58,8 +58,9 @@ if _IS_FROZEN:
     os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
     os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
 
-    os.environ.setdefault("QDRANT_EMBEDDED_PATH", str(_user_data / "qdrant_storage"))
-    os.environ.setdefault("UPLOAD_DIR", str(_user_data / "manuals"))
+    # Also route application data to AppData to avoid Program Files permission errors
+    os.environ["UPLOAD_DIR"] = str(_user_data / "manuals")
+    os.environ["QDRANT_EMBEDDED_PATH"] = str(_user_data / "qdrant_storage")
     os.environ["MARKER_TELEMETRY"] = "false"
     os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
 
@@ -289,13 +290,17 @@ if __name__ == "__main__":
         """Start the FastAPI/Uvicorn server."""
         logger.info("Starting FastAPI server via Uvicorn...")
         host = "0.0.0.0" if is_docker else "127.0.0.1"
-        uvicorn.run(
-            app,
-            host=host,
-            port=settings.port,
-            workers=1,
-            log_config=None,
-        )
+        try:
+            uvicorn.run(
+                app,
+                host=host,
+                port=settings.port,
+                workers=1,
+                log_config=None,
+            )
+        except Exception as e:
+            logger.error(f"Uvicorn server crashed: {e}")
+            _write_crash_log(e)
 
     if is_docker:
         # Docker: run blocking on the main thread
