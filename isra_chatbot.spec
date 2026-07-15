@@ -66,7 +66,6 @@ hidden_imports = [
     "transformers", "transformers.models.auto",
     # PDF processing
     "marker", "marker.converters", "marker.models",
-    "surya", "paddleocr", "paddlepaddle",
     "fitz", "pymupdf", "cv2", "PIL", "PIL.Image",
     # Utilities
     "loguru", "aiofiles", "numpy", "tqdm",
@@ -92,6 +91,7 @@ a = Analysis(
     excludes=[
         # CUDA not needed — CPU-only build
         "torch.cuda", "torch.cuda.amp", "torchvision.io",
+        "triton", "xformers", "nvidia", "vllm", "flash_attn",
         # Test frameworks
         "pytest", "unittest", "hypothesis",
         # Notebooks / dev tools
@@ -103,7 +103,7 @@ a = Analysis(
         # Heavy OCR / PDF processing deps not needed at runtime
         # (PDFs are processed via marker API calls, not direct imports)
         "paddlepaddle", "paddle", "paddleocr",
-        "surya",
+        "surya", "surya_ocr",
         # Unused torch sub-packages that are large
         "torch.distributed", "torch.multiprocessing",
         "torch.testing", "torch._dynamo",
