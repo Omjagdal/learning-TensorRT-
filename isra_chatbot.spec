@@ -59,14 +59,8 @@ hidden_imports = [
     # Qdrant vector DB
     "qdrant_client", "qdrant_client.http", "qdrant_client.models",
     "qdrant_client.http.models", "qdrant_client.http.api",
-    # ML / embeddings
-    "sentence_transformers", "sentence_transformers.models",
-    "FlagEmbedding", "FlagEmbedding.BGE_M3",
-    "torch", "torch.nn", "torch.nn.functional", "torchvision",
-    "transformers", "transformers.models.auto",
-    # PDF processing
-    "marker", "marker.converters", "marker.models",
-    "fitz", "pymupdf", "cv2", "PIL", "PIL.Image",
+    # ML / embeddings (Let PyInstaller hooks handle torch/transformers natively)
+    "sentence_transformers", "FlagEmbedding",
     # Utilities
     "loguru", "aiofiles", "numpy", "tqdm",
     "rank_bm25", "tiktoken", "yaml", "requests", "httpx",
@@ -89,6 +83,8 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        # Unused ML Frameworks
+        "tensorflow", "tensorboard", "flax", "keras", "jax", "jaxlib",
         # CUDA not needed — CPU-only build
         "torch.cuda", "torch.cuda.amp", "torchvision.io",
         "triton", "xformers", "nvidia", "vllm", "flash_attn",
@@ -107,6 +103,7 @@ a = Analysis(
         # Unused torch sub-packages that are large
         "torch.distributed", "torch.multiprocessing",
         "torch.testing", "torch._dynamo",
+        "torch.onnx", "torch.export", "torch.fx",
         # Unused transformers backends
         "transformers.integrations",
     ],
