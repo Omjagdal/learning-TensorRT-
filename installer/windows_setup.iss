@@ -1,6 +1,6 @@
 ; =============================================================================
 ; ISRA Chatbot — Inno Setup 6 Windows Installer Script
-; Produces: MachineAI_Chatbot_Setup.exe
+; Produces: MachineAI_Chatbot_Setup.exe (+ companion .bin files for large builds)
 ; Target: Windows 10 (all builds, 64-bit) and Windows 11
 ; =============================================================================
 
@@ -23,17 +23,28 @@ PrivilegesRequired=admin
 OutputDir=..\dist\installer
 OutputBaseFilename=MachineAI_Chatbot_Setup
 SetupIconFile=..\icon.ico
+; Use maximum compression
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
-; Windows 10 minimum (build 10240 = RTM). All builds of Win10 and Win11 are supported.
+; Windows 10 minimum (build 10240 = RTM)
 MinVersion=10.0.10240
-; 64-bit only (Ollama and PyTorch require x64)
+; 64-bit only
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 SetupMutex=ISRAVisionChatbot_Setup
+; ─── Large installer support ──────────────────────────────────────────────────
+; DiskSpanning allows installer to exceed the 4.2 GB single-file limit.
+; When the total size is large (models included), Inno Setup creates:
+;   MachineAI_Chatbot_Setup.exe   ← run this to install
+;   MachineAI_Chatbot_Setup-1.bin ← keep in same folder as the .exe
+;   MachineAI_Chatbot_Setup-2.bin ← keep in same folder as the .exe
+;   ... (as many .bin files as needed)
+; All files must be in the same folder when installing.
+DiskSpanningEnabled=yes
+DiskSliceSize=2100000000
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -42,7 +53,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
-; Main application files
+; Main application files (includes _internal folder with app + any bundled models)
 Source: "..\dist\IsraChatbot\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -51,7 +62,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 [Run]
-; Launch after install (nowait = non-blocking, so installer exits cleanly)
+; Launch after install
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
