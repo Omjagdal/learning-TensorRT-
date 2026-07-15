@@ -28,7 +28,7 @@ datas = [
     (str(backend_dir / ".env"),  "."),
 ]
 
-# Add bundled Ollama binary
+# Add bundled Ollama binary ONLY (not models — those download on first launch)
 _ollama_win = project_root / "bundle_assets" / "ollama" / "ollama.exe"
 _ollama_mac = project_root / "bundle_assets" / "ollama" / "ollama"
 if _ollama_win.exists():
@@ -36,15 +36,9 @@ if _ollama_win.exists():
 elif _ollama_mac.exists():
     datas.append((str(_ollama_mac.parent), "ollama"))
 
-# Add pre-cached HuggingFace models
-_hf_cache = project_root / "bundle_assets" / "hf_cache"
-if _hf_cache.exists():
-    datas.append((str(_hf_cache), "hf_cache"))
-
-# Add pre-pulled Ollama model store
-_ollama_models = project_root / "bundle_assets" / "ollama_models"
-if _ollama_models.exists():
-    datas.append((str(_ollama_models), "ollama_models"))
+# NOTE: HuggingFace models (hf_cache) and Ollama models (ollama_models) are NOT
+# bundled here. They are downloaded on first launch via the setup wizard.
+# This keeps the installer small (~300MB vs 10GB+).
 
 # ── Hidden imports ────────────────────────────────────────────────────────────
 hidden_imports = [

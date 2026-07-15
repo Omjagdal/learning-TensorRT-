@@ -154,12 +154,45 @@ def _verify_models() -> bool:
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
+def _ensure_models_downloaded() -> bool:
+    """Pull required Ollama models if they are not already present.
+    Called on first launch when models directory is empty."""
+    available = _get_available_models()
+    all_ok = True
+    for model in REQUIRED_MODELS:
+        model_base = model.split(":")[0]
+        if any(model_base in avail for avail in available):
+            logger.info(f"Model '{model}' already present — skipping download.")
+            continue
+        logger.info(f"First launch: pulling model '{model}' (this may take a while)...")
+        ollama_bin = _get_ollama_binary()
+        if ollama_bin is None:
+            logger.error("Cannot pull models — Ollama binary not found!")
+            return False
+        try:
+            result = subprocess.run(
+                [str(ollama_bin), "pull", model],
+                timeout=3600,  # 1 hour max per model
+                env=os.environ.copy(),
+            )
+            if result.returncode != 0:
+                logger.error(f"Failed to pull model '{model}'")
+                all_ok = False
+            else:
+                logger.info(f"Model '{model}' downloaded successfully.")
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout pulling model '{model}'")
+            all_ok = False
+    return all_ok
+
+
 def start_ollama() -> bool:
     """Start the Ollama server if not already running. Returns True if ready."""
     global _ollama_process, _ollama_managed
 
     if _is_ollama_running():
         logger.info("Ollama is already running (external). Skipping managed start.")
+        _verify_models()
         return True
 
     ollama_bin = _get_ollama_binary()
@@ -205,9 +238,13 @@ def start_ollama() -> bool:
         stop_ollama()
         return False
 
+    # On first launch: pull required models if not present
+    _ensure_models_downloaded()
+
     _verify_models()
     atexit.register(stop_ollama)
     return True
+
 
 
 # ── Shutdown ──────────────────────────────────────────────────────────────────
