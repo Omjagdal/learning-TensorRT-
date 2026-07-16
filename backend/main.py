@@ -11,21 +11,23 @@ import os
 import traceback
 from pathlib import Path
 
-def _write_crash_log(e):
+def _write_crash_log(exctype, value, tb):
     try:
         desktop = Path.home() / "Desktop" / "isra_crash.txt"
         with open(desktop, "w") as f:
             f.write("ISRA Chatbot Crash Log\n")
             f.write("========================\n")
-            f.write(traceback.format_exc())
+            f.write("".join(traceback.format_exception(exctype, value, tb)))
     except:
         pass
+    sys.__excepthook__(exctype, value, tb)
 
-try:
-    # ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
-    # CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are in place
-    # before pydantic-settings reads them or before module-level code runs mkdir().
-    _IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+sys.excepthook = _write_crash_log
+
+# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
+# CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are in place
+# before pydantic-settings reads them or before module-level code runs mkdir().
+_IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 if _IS_FROZEN:
     _bundle_root = Path(sys.executable).parent
@@ -354,8 +356,3 @@ if __name__ == "__main__":
 
         # Clean shutdown after window closes
         logger.info("Application exiting.")
-
-except Exception as e:
-    _write_crash_log(e)
-    # Re-raise so the app actually closes
-    raise
