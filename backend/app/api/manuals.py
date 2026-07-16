@@ -25,6 +25,9 @@ async def upload_manual(
     """Upload a PDF manual for ingestion, returning SSE progress."""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+        
+    if file.content_type not in ["application/pdf", "application/x-pdf"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Expected application/pdf.")
 
     # Save uploaded file to a temporary location
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:

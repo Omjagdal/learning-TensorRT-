@@ -38,6 +38,21 @@ cd /d "%ROOT%"
 echo Checking prerequisites...
 python --version >nul 2>&1 || (echo [ERROR] Python not found. Install Python 3.11 from https://www.python.org/ & pause & exit /b 1)
 node --version >nul 2>&1   || (echo [ERROR] Node.js not found. Install from https://nodejs.org/ & pause & exit /b 1)
+
+set "ISCC="
+for %%p in (
+    "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    "C:\Program Files\Inno Setup 6\ISCC.exe"
+) do (
+    if exist "%%~p" set "ISCC=%%~p"
+)
+
+if not defined ISCC (
+    echo [ERROR] Inno Setup 6 not found. The installer cannot be built.
+    echo Install from: https://jrsoftware.org/isdl.php
+    pause & exit /b 1
+)
+
 echo [OK] Prerequisites OK
 echo.
 
@@ -157,25 +172,13 @@ mkdir "%ROOT%dist\installer" 2>nul
 del /Q "%ROOT%dist\installer\*.exe" 2>nul
 del /Q "%ROOT%dist\installer\*.bin" 2>nul
 
-set "ISCC="
-for %%p in (
-    "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-    "C:\Program Files\Inno Setup 6\ISCC.exe"
-) do (
-    if exist "%%~p" set "ISCC=%%~p"
-)
-
-if defined ISCC (
-    "%ISCC%" "%ROOT%installer\windows_setup.iss"
-    if exist "%ROOT%dist\installer\MachineAI_Chatbot_Setup.exe" (
-        echo [OK] Installer files created in dist\installer\
-        echo      Copy ALL files in dist\installer\ to USB together.
-    ) else (
-        echo [WARN] Inno Setup did not produce output. Check errors above.
-    )
+"%ISCC%" "%ROOT%installer\windows_setup.iss"
+if exist "%ROOT%dist\installer\MachineAI_Chatbot_Setup.exe" (
+    echo [OK] Installer files created in dist\installer\
+    echo      Copy ALL files in dist\installer\ to USB together.
 ) else (
-    echo [INFO] Inno Setup not found — skipping installer creation.
-    echo        Install from: https://jrsoftware.org/isdl.php
+    echo [ERROR] Inno Setup did not produce output. Check errors above.
+    pause & exit /b 1
 )
 echo.
 

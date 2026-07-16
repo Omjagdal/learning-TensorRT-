@@ -313,13 +313,20 @@ if __name__ == "__main__":
         # ── Wait for server to become healthy ─────────────────────────────────
         server_url = f"http://127.0.0.1:{settings.port}"
         logger.info(f"Waiting for server at {server_url}...")
+        server_ready = False
         for _ in range(60):
             try:
                 if requests.get(server_url + "/api/v1/health", timeout=1).status_code == 200:
+                    server_ready = True
                     break
             except Exception:
                 pass
             time.sleep(0.5)
+
+        if not server_ready:
+            error_msg = "Fatal Error: The local background server failed to start within 30 seconds. Check isra_crash.txt on your Desktop for details."
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # ── Open native desktop window ─────────────────────────────────────────
         logger.info("Opening native desktop window...")
