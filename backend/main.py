@@ -289,53 +289,24 @@ if __name__ == "__main__":
             )
 
     # ── Server runner ─────────────────────────────────────────────────────────
-    def run_server():
-        """Start the FastAPI/Uvicorn server."""
-        logger.info("Starting FastAPI server via Uvicorn...")
-        host = "0.0.0.0" if is_docker else "127.0.0.1"
-        try:
-            uvicorn.run(
-                app,
-                host=host,
-                port=settings.port,
-                workers=1,
-                log_config=None,
-            )
-        except Exception as e:
-            logger.error(f"Uvicorn server crashed: {e}")
-            _write_crash_log(e)
-
     if is_docker:
+        def run_server():
+            """Start the FastAPI/Uvicorn server for Docker."""
+            logger.info("Starting FastAPI server via Uvicorn on port 8000...")
+            try:
+                uvicorn.run(app, host="0.0.0.0", port=settings.port, workers=1, log_config=None)
+            except Exception as e:
+                logger.error(f"Uvicorn server crashed: {e}")
+                _write_crash_log(type(e), e, e.__traceback__)
         # Docker: run blocking on the main thread
         run_server()
     else:
-        # Desktop: run server in background thread, open native window
-        server_thread = threading.Thread(target=run_server, daemon=True)
-        server_thread.start()
-
-        # ── Wait for server to become healthy ─────────────────────────────────
-        server_url = f"http://127.0.0.1:{settings.port}"
-        logger.info(f"Waiting for server at {server_url}...")
-        server_ready = False
-        for _ in range(60):
-            try:
-                if requests.get(server_url + "/api/v1/health", timeout=1).status_code == 200:
-                    server_ready = True
-                    break
-            except Exception:
-                pass
-            time.sleep(0.5)
-
-        if not server_ready:
-            error_msg = "Fatal Error: The local background server failed to start within 30 seconds. Check isra_crash.txt on your Desktop for details."
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
-
-        # ── Open native desktop window ─────────────────────────────────────────
-        logger.info("Opening native desktop window...")
+        # Desktop: Let PyWebView natively host the ASGI app on a random internal port!
+        # This completely removes port conflicts (e.g. port 8000 in use).
+        logger.info("Opening native desktop window (Internal Ephemeral Port)...")
         window = webview.create_window(
             settings.app_name,
-            server_url,
+            app,  # Pass the ASGI app directly instead of a string URL!
             width=1400,
             height=860,
             min_size=(900, 600),
