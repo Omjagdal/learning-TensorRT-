@@ -62,7 +62,8 @@ if _IS_FROZEN:
 
     # Also route application data to AppData to avoid Program Files permission errors
     os.environ["UPLOAD_DIR"] = str(_user_data / "manuals")
-    os.environ["QDRANT_EMBEDDED_PATH"] = str(_user_data / "qdrant_storage")
+    os.environ["QDRANT_PATH"] = str(_user_data / "qdrant_storage")
+    os.environ["BM25_INDEX_PATH"] = str(_user_data / "bm25_index.pkl")
     os.environ["MARKER_TELEMETRY"] = "false"
     os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
 
