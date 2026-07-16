@@ -110,3 +110,10 @@ jobs:
         name: MachineAI-Chatbot-Windows-Setup
         path: dist/installer/MachineAI_Chatbot_Setup.exe
         retention-days: 30
+
+    - name: Upload Windows Portable Folder
+      uses: actions/upload-artifact@v4
+      with:
+        name: MachineAI-Chatbot-Windows-Portable
+        path: dist/IsraChatbot/
+        retention-days: 30
