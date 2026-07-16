@@ -43,10 +43,14 @@ jobs:
 
     - name: Install Python dependencies
       working-directory: ./backend
+      shell: pwsh
       run: |
+        $ErrorActionPreference = 'Stop'
         pip install "numpy<2.0.0" --no-cache-dir --no-compile
         pip install -r requirements.txt --no-cache-dir --no-compile
+        if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit 1 }
         pip install pyinstaller pywebview pythonnet platformdirs --no-cache-dir --no-compile
+        if ($LASTEXITCODE -ne 0) { Write-Error "pyinstaller install failed"; exit 1 }
 
     - name: Download Ollama Windows binary
       shell: pwsh
