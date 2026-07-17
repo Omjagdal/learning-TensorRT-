@@ -23,8 +23,8 @@ After install, create this folder structure next to `IsraChatbot.exe`:
 
 ```
 C:\Program Files\ISRA Vision Chatbot\
-├── IsraChatbot.exe
-├── _internal\
+├── Chatbot.exe                    ← Tauri executable
+├── resources\                     ← Contains Python backend sidecar
 └── models\                        ← CREATE THIS FOLDER
     ├── ollama_models\             ← Copy from source machine
     │   ├── manifests\
