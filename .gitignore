@@ -68,6 +68,3 @@ desktop.ini
 *.tmp
 *.temp
 
-# Tauri / Rust build artifacts
-src-tauri/target/
-src-tauri/gen/
