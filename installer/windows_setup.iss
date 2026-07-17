@@ -11,7 +11,7 @@
 
 [Setup]
 ; NOTE: Use {{ to produce a literal { in Inno Setup
-AppId={{8B2F3C4D-1A2B-4E5F-9C0D-3E4F5A6B7C8D}
+AppId={{8B2F3C4D-1A2B-4E5F-9C0D-3E4F5A6B7C8D}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
