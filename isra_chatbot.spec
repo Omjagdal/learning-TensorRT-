@@ -1,14 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 # =============================================================================
-# isra_chatbot.spec — PyInstaller build spec for the ISRA Chatbot desktop app
+# isra_chatbot.spec — PyInstaller spec for the HEADLESS Python backend sidecar
 # =============================================================================
+#
+# This builds ONLY the Python FastAPI backend as a headless executable.
+# The window/UI is managed by the Tauri shell (IsraChatbot.exe).
 #
 # Build command (run from project root, on Windows with venv activated):
 #   pyinstaller --clean -y isra_chatbot.spec
 #
-# Outputs:
-#   dist/IsraChatbot/          <-- the application folder
-#   dist/IsraChatbot/IsraChatbot.exe (Windows) or IsraChatbot (Mac)
+# Output:
+#   dist/backend_server/backend_server.exe  <-- the sidecar Tauri expects
 # =============================================================================
 
 import sys
@@ -24,11 +26,13 @@ frontend_dist = project_root / "frontend" / "dist"
 
 # ── Data files to bundle ──────────────────────────────────────────────────────
 datas = [
+    # The built React frontend — served as static files by FastAPI
     (str(frontend_dist),         "frontend/dist"),
+    # .env defaults (overridden at runtime by Tauri env vars)
     (str(backend_dir / ".env"),  "."),
 ]
 
-# Add bundled Ollama binary ONLY (not models — those download on first launch)
+# Add bundled Ollama binary
 _ollama_win = project_root / "bundle_assets" / "ollama" / "ollama.exe"
 _ollama_mac = project_root / "bundle_assets" / "ollama" / "ollama"
 if _ollama_win.exists():
@@ -37,8 +41,7 @@ elif _ollama_mac.exists():
     datas.append((str(_ollama_mac.parent), "ollama"))
 
 # NOTE: HuggingFace models (hf_cache) and Ollama models (ollama_models) are NOT
-# bundled here. They are downloaded on first launch via the setup wizard.
-# This keeps the installer small (~300MB vs 10GB+).
+# bundled here. They reside in the models/ folder next to the Tauri app bundle.
 
 # ── Hidden imports ────────────────────────────────────────────────────────────
 hidden_imports = [
@@ -50,16 +53,12 @@ hidden_imports = [
     # FastAPI / Starlette
     "fastapi", "fastapi.middleware.cors",
     "starlette", "starlette.routing", "starlette.staticfiles", "starlette.responses",
-    # PyWebView — Windows uses WinForms (.NET/pythonnet)
-    "webview", "webview.platforms.winforms", "webview.platforms.cocoa",
-    "webview.platforms.gtk", "webview.platforms.qt",
-    "clr", "clr_loader",          # pythonnet runtime (Windows WinForms)
     # Pydantic
     "pydantic", "pydantic_settings", "pydantic.v1",
     # Qdrant vector DB
     "qdrant_client", "qdrant_client.http", "qdrant_client.models",
     "qdrant_client.http.models", "qdrant_client.http.api",
-    # ML / embeddings (Let PyInstaller hooks handle torch/transformers natively)
+    # ML / embeddings
     "sentence_transformers", "FlagEmbedding",
     # Utilities
     "loguru", "aiofiles", "numpy", "tqdm",
@@ -67,9 +66,8 @@ hidden_imports = [
     "langchain", "langchain.text_splitter",
     "langchain_community", "langchain_core",
     "platformdirs",
-    "multiprocessing", "multiprocessing.freeze_support",
-    "email.mime.text", "email.mime.multipart",  # needed by some httpx internals
-    "charset_normalizer",  # needed by requests on some Windows builds
+    "email.mime.text", "email.mime.multipart",
+    "charset_normalizer",
 ]
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
@@ -83,28 +81,26 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        # No GUI frameworks needed — window is managed by Tauri
+        "webview", "pythonnet", "clr", "clr_loader",
+        "tkinter", "_tkinter",
         # Unused ML Frameworks
         "tensorflow", "tensorboard", "flax", "keras", "jax", "jaxlib",
         # CUDA not needed — CPU-only build
         "torch.cuda", "torch.cuda.amp", "torchvision.io",
         "triton", "xformers", "nvidia", "vllm", "flash_attn",
-        # Test frameworks
+        # Test / dev tools
         "pytest", "unittest", "hypothesis",
-        # Notebooks / dev tools
         "jupyter", "ipython", "ipykernel",
-        # Plotting (not used in app)
+        # Plotting
         "matplotlib", "seaborn",
-        # Linux-only display backends
-        "tkinter", "_tkinter",
-        # Heavy OCR / PDF processing deps not needed at runtime
-        # (PDFs are processed via marker API calls, not direct imports)
+        # Heavy OCR deps
         "paddlepaddle", "paddle", "paddleocr",
         "surya", "surya_ocr",
-        # Unused torch sub-packages that are large
+        # Unused torch sub-packages
         "torch.distributed", "torch.multiprocessing",
         "torch.testing", "torch._dynamo",
         "torch.onnx", "torch.export", "torch.fx",
-        # Unused transformers backends
         "transformers.integrations",
     ],
     win_no_prefer_redirects=False,
@@ -120,19 +116,18 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="IsraChatbot",
+    name="backend_server",        # <-- Tauri sidecar name
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,           # No black terminal window on Windows
+    console=True,                 # Keep console=True: Tauri reads stdout for BACKEND_READY
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,        # Build for current arch (x64 on Windows runner)
+    target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(project_root / "icon.ico") if (project_root / "icon.ico").exists() else None,
-    version=None,            # Can add version_info file here if needed
+    version=None,
 )
 
 coll = COLLECT(
@@ -143,17 +138,16 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="IsraChatbot",
+    name="backend_server",
 )
 
 if sys.platform == "darwin":
     app = BUNDLE(
         coll,
-        name='IsraChatbot.app',
-        icon=str(project_root / "icon.png") if (project_root / "icon.png").exists() else None,
-        bundle_identifier=None,
+        name='backend_server.app',
+        icon=None,
+        bundle_identifier="com.isravision.backend",
         info_plist={
-            'NSHighResolutionCapable': 'True',
-            'LSBackgroundOnly': 'False',
+            'LSBackgroundOnly': 'True',  # Headless — no Dock icon on macOS
         },
     )

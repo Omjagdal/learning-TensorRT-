@@ -3,7 +3,7 @@ main.py — FastAPI application entry point.
 Supports three run modes:
   1. Development  — plain `python main.py` with system Ollama
   2. Docker       — headless, DOCKER_ENV=true, Ollama is external
-  3. Desktop .exe — PyInstaller frozen, OllamaManager starts bundled Ollama
+  3. Desktop sidecar — headless server on 127.0.0.1:8765, window managed by Tauri
 """
 
 import sys
@@ -24,17 +24,28 @@ def _write_crash_log(exctype, value, tb):
 
 sys.excepthook = _write_crash_log
 
-# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
-# CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are in place
+# ── Frozen sidecar path setup (PyInstaller headless backend_server.exe) ───────
+# CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are set
 # before pydantic-settings reads them or before module-level code runs mkdir().
 _IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 if _IS_FROZEN:
+    # The sidecar exe lives inside the Tauri app bundle:
+    #   <Tauri app>/resources/backend_server.exe  (Windows)
+    #   <Tauri app>/resources/backend_server      (macOS)
+    # The *Tauri* bundle root (where IsraChatbot.exe lives) is two levels up
+    # from _MEIPASS (the PyInstaller temp extract dir).
+    # We use the exe path directly since Tauri places sidecar in resources/.
     _bundle_root = Path(sys.executable).parent
     import platformdirs
 
-    # ── PORTABLE MODE: check for models/ folder next to the .exe ──────────────
-    _portable_models = _bundle_root / "models"
+    # ── PORTABLE MODE: check for models/ folder next to the Tauri bundle ──────
+    # Tauri puts resources one level inside the app dir; models/ sits alongside.
+    _tauri_app_root = _bundle_root.parent  # go up from resources/ to app root
+    _portable_models = _tauri_app_root / "models"
+    # Also check next to the sidecar itself as a fallback
+    if not _portable_models.exists():
+        _portable_models = _bundle_root / "models"
     _portable_ollama  = _portable_models / "ollama_models"
     _portable_hf      = _portable_models / "hf_cache"
     _is_portable_mode = _portable_models.exists()
@@ -60,7 +71,7 @@ if _IS_FROZEN:
     os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
     os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
 
-    # Also route application data to AppData to avoid Program Files permission errors
+    # Route app data to AppData to avoid Program Files permission errors
     os.environ["UPLOAD_DIR"] = str(_user_data / "manuals")
     os.environ["QDRANT_EMBEDDED_PATH"] = str(_user_data / "qdrant_storage")
     os.environ["MARKER_TELEMETRY"] = "false"
@@ -263,23 +274,16 @@ else:
 
 
 if __name__ == "__main__":
-    import multiprocessing
-    import time
-    import requests
     import uvicorn
 
-    # ── PyInstaller freeze support (must be first) ─────────────────────────────
-    multiprocessing.freeze_support()
-
-    # ── Detect Docker headless mode ───────────────────────────────────────────
+    # ── Detect run mode ────────────────────────────────────────────────────────
     is_docker = os.environ.get("DOCKER_ENV") == "true"
+    is_tauri_sidecar = os.environ.get("TAURI_SIDECAR") == "1" or _IS_FROZEN
 
-    # ── Desktop mode: start Ollama via OllamaManager ──────────────────────────
+    # ── Start Ollama when running as a desktop sidecar ─────────────────────────
     if not is_docker:
-        from app.core.ollama_manager import start_ollama, stop_ollama
-        import webview
-
-        logger.info("Desktop mode — initializing Ollama manager...")
+        from app.core.ollama_manager import start_ollama
+        logger.info("Desktop sidecar mode — initializing Ollama manager...")
         ollama_ok = start_ollama()
         if not ollama_ok:
             logger.warning(
@@ -287,43 +291,44 @@ if __name__ == "__main__":
                 "Check that the bundled Ollama binary and models are present."
             )
 
-    # ── Server runner ─────────────────────────────────────────────────────────
+    # ── Server configuration ───────────────────────────────────────────────────
+    # Docker: listen on all interfaces (0.0.0.0) so it's reachable from outside
+    # Desktop sidecar / dev: listen on loopback only (127.0.0.1) for security
     if is_docker:
-        def run_server():
-            """Start the FastAPI/Uvicorn server for Docker."""
-            logger.info("Starting FastAPI server via Uvicorn on port 8000...")
-            try:
-                uvicorn.run(app, host="0.0.0.0", port=settings.port, workers=1, log_config=None)
-            except Exception as e:
-                logger.error(f"Uvicorn server crashed: {e}")
-                _write_crash_log(type(e), e, e.__traceback__)
-        # Docker: run blocking on the main thread
-        run_server()
+        host = "0.0.0.0"
+        port = settings.port  # 8000 from .env
     else:
-        # Desktop: Let PyWebView natively host the ASGI app on a random internal port!
-        # This completely removes port conflicts (e.g. port 8000 in use).
-        logger.info("Opening native desktop window (Internal Ephemeral Port)...")
-        window = webview.create_window(
-            settings.app_name,
-            app,  # Pass the ASGI app directly instead of a string URL!
-            width=1400,
-            height=860,
-            min_size=(900, 600),
-            resizable=True,
+        host = "127.0.0.1"
+        port = int(os.environ.get("BACKEND_PORT", "8765"))
+
+    logger.info(f"Starting FastAPI sidecar on {host}:{port}...")
+
+    # ── Signal to Tauri shell that the backend is ready ───────────────────────
+    # The Tauri main.rs waits for this exact line on stdout before opening the window.
+    # We print it just before blocking on uvicorn.run() so the server is bound.
+    import threading
+    def _signal_ready():
+        import time, socket
+        # Wait until the port is actually accepting connections
+        for _ in range(60):
+            try:
+                with socket.create_connection((host if host != "0.0.0.0" else "127.0.0.1", port), timeout=0.5):
+                    break
+            except OSError:
+                time.sleep(0.5)
+        print(f"BACKEND_READY:{port}", flush=True)
+
+    if is_tauri_sidecar:
+        threading.Thread(target=_signal_ready, daemon=True).start()
+
+    try:
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            workers=1,
+            log_config=None,
         )
-
-        def on_window_closed():
-            """Called by pywebview when the user closes the window."""
-            logger.info("Window closed — shutting down...")
-            stop_ollama()
-
-        window.events.closed += on_window_closed
-
-        # Start the webview event loop (blocks until window is closed)
-        webview.start(
-            private_mode=False,
-            debug=settings.debug,
-        )
-
-        # Clean shutdown after window closes
-        logger.info("Application exiting.")
+    except Exception as e:
+        logger.error(f"Uvicorn server crashed: {e}")
+        _write_crash_log(type(e), e, e.__traceback__)

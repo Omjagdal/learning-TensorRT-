@@ -1,0 +1,29 @@
+[package]
+name = "isra-chatbot"
+version = "2.0.0"
+description = "ISRA Vision Chatbot — Industrial AI Desktop Application"
+authors = ["ISRA Vision"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "isra_chatbot_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+# Optimize binary size for distribution
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
