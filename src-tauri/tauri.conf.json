@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ISRA Vision Chatbot",
+  "productName": "Chatbot",
   "version": "2.0.0",
   "identifier": "com.isravision.chatbot",
   "build": {

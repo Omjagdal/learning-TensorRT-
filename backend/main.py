@@ -143,7 +143,18 @@ class InterceptHandler(builtin_logging.Handler):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Setup logging
-    setup_logging(settings.debug)
+    # In frozen portable mode, we want logs to go to the bundle root's logs folder
+    # In frozen installed mode, they go to AppData
+    # In dev mode, they go to backend/logs
+    if _IS_FROZEN:
+        if _is_portable_mode:
+            logs_dir = _tauri_app_root / "logs"
+        else:
+            logs_dir = _user_data / "logs"
+    else:
+        logs_dir = Path(__file__).parent.parent / "logs"
+        
+    setup_logging(settings.debug, logs_dir)
     builtin_logging.basicConfig(handlers=[InterceptHandler()], level=0)
     
     # Suppress verbose HuggingFace logs
@@ -151,6 +162,10 @@ async def lifespan(app: FastAPI):
     builtin_logging.getLogger("transformers").setLevel(builtin_logging.WARNING)
     
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+
+    # 0. Check GPU (DPR Section 8)
+    from app.core.gpu_check import get_gpu_status
+    get_gpu_status()
 
     # 1. Initialize Vector Store (Qdrant)
     store = get_qdrant_store()
