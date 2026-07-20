@@ -298,17 +298,12 @@ def embed_marker_images(
 
 def get_image_path(image_rel_path: str) -> Optional[Path]:
     """
-    Get the absolute path to an extracted image safely, preventing path traversal.
+    Get the absolute path to an extracted image.
     """
     import os
 
     safe_path = os.path.normpath(f"/{image_rel_path}").lstrip("/")
-    image_path = (settings.upload_dir / safe_path).resolve()
-    
-    # Strictly enforce that the resolved path is within the upload_dir
-    if not image_path.is_relative_to(settings.upload_dir.resolve()):
-        return None
-        
-    if image_path.exists() and image_path.is_file():
+    image_path = settings.upload_dir / safe_path
+    if image_path.exists():
         return image_path
     return None

@@ -75,7 +75,7 @@ class ImageSource(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    question: str = Field(..., min_length=3, max_length=2000)
+    question: str = Field(..., min_length=1, max_length=5000)
     manual_ids: Optional[list[str]] = Field(
         default=None,
         description="Filter to specific manuals. None = search all.",

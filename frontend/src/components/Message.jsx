@@ -123,7 +123,7 @@ function CodeBlock({ node, inline, className, children, ...props }) {
   }
 
   return (
-    <code className={clsx(className, 'text-emerald-400 px-1.5 py-0.5 rounded-md text-[14px] font-mono')}
+    <code className={clsx(className, 'text-red-400 px-1.5 py-0.5 rounded-md text-[14px] font-mono')}
       style={{ background: 'var(--bg-tertiary)' }} {...props}>
       {children}
     </code>
@@ -155,7 +155,7 @@ export function TypingIndicator() {
     <div className="flex items-start gap-3 msg-enter">
       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <Sparkles size={14} className="text-emerald-400" />
+        <Sparkles size={14} className="text-red-400" />
       </div>
       <div className="flex items-center gap-1.5 px-4 py-3 rounded-xl"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -174,7 +174,7 @@ const STAGE_CONFIG = {
   retrieve:  { icon: Search,     label: 'Retrieving',   color: 'text-blue-400' },
   rerank:    { icon: Search,     label: 'Reranking',    color: 'text-cyan-400' },
   generate:  { icon: Cpu,        label: 'Generating',   color: 'text-purple-400' },
-  validate:  { icon: Shield,     label: 'Validating',   color: 'text-emerald-400' },
+  validate:  { icon: Shield,     label: 'Validating',   color: 'text-red-400' },
   fallback:  { icon: BookOpen,   label: 'Fallback',     color: 'text-orange-400' },
 }
 
@@ -188,7 +188,7 @@ export function StreamingIndicator() {
         <div className="bouncy-dot" />
         <div className="bouncy-dot" />
       </div>
-      <span className="text-[12px] font-medium" style={{ color: 'var(--text-muted)' }}>Thinking…</span>
+      <span className="text-[12px] font-medium" style={{ color: 'var(--text-muted)' }}>Typing…</span>
     </div>
   )
 }
@@ -237,7 +237,7 @@ function SourceItem({ source, index }) {
         )}
         <div className="flex gap-1 shrink-0">
           <span className={clsx('px-1.5 py-0.5 rounded-md text-[11px] font-mono font-medium',
-            score >= 0.5 ? 'bg-emerald-500/10 text-emerald-400' :
+            score >= 0.5 ? 'bg-red-500/10 text-red-400' :
             score >= 0.02 ? 'bg-yellow-500/10 text-yellow-400' :
             'bg-[var(--bg-card)] text-[var(--text-muted)]'
           )} title={`Search Score: ${score}`}>
@@ -292,8 +292,7 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
-  const dragStart = useRef({ x: 0, y: 0 })
-  const bodyRef = useRef(null)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const image = images[currentIndex]
 
   useEffect(() => {
@@ -301,13 +300,18 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
     setPan({ x: 0, y: 0 })
   }, [currentIndex])
 
-  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 5))
-  const handleZoomOut = () => setZoom(z => {
-    const newZ = Math.max(z - 0.25, 0.25)
-    if (newZ <= 1) setPan({ x: 0, y: 0 })
-    return newZ
-  })
-  const handleReset = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
+  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3))
+  const handleZoomOut = () => {
+    setZoom(z => {
+      const newZoom = Math.max(z - 0.25, 0.5)
+      if (newZoom <= 1) setPan({ x: 0, y: 0 })
+      return newZoom
+    })
+  }
+  const handleReset = () => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }
 
   const handlePrev = useCallback((e) => {
     if (e) e.stopPropagation()
@@ -319,67 +323,50 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
     onChangeIndex(currentIndex < images.length - 1 ? currentIndex + 1 : 0)
   }, [currentIndex, images.length, onChangeIndex])
 
-  // Attach non-passive wheel listener so preventDefault() actually works
-  useEffect(() => {
-    const el = bodyRef.current
-    if (!el) return
-    const onWheel = (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      const zoomIntensity = 0.002
-      const delta = e.deltaY
-      setZoom(z => {
-        const newZoom = Math.max(0.25, Math.min(z - delta * zoomIntensity, 5))
-        if (newZoom <= 1) setPan({ x: 0, y: 0 })
-        return newZoom
-      })
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  const handleWheel = useCallback((e) => {
+    // Use wheel delta to zoom in or out
+    const zoomIntensity = 0.005;
+    const delta = e.deltaY;
+    setZoom(z => {
+      const newZoom = z - delta * zoomIntensity;
+      const finalZoom = Math.max(0.2, Math.min(newZoom, 5));
+      if (finalZoom <= 1) setPan({ x: 0, y: 0 })
+      return finalZoom;
+    });
+  }, []);
+
+  const handleMouseDown = (e) => {
+    if (zoom <= 1) return
+    e.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+  }
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose()
       else if (e.key === 'ArrowLeft') handlePrev()
       else if (e.key === 'ArrowRight') handleNext()
-      else if (e.key === '+' || e.key === '=') handleZoomIn()
-      else if (e.key === '-') handleZoomOut()
-      else if (e.key === '0') handleReset()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose, handlePrev, handleNext])
-
-  const handlePointerDown = (e) => {
-    if (zoom <= 1) return
-    e.preventDefault()
-    setIsDragging(true)
-    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
-  }
-
-  const handlePointerMove = useCallback((e) => {
-    if (!isDragging || zoom <= 1) return
-    setPan({
-      x: e.clientX - dragStart.current.x,
-      y: e.clientY - dragStart.current.y
-    })
-  }, [isDragging, zoom])
-
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove)
-      window.addEventListener('pointerup', handlePointerUp)
-      return () => {
-        window.removeEventListener('pointermove', handlePointerMove)
-        window.removeEventListener('pointerup', handlePointerUp)
-      }
-    }
-  }, [isDragging, handlePointerMove, handlePointerUp])
 
   return (
     <div className="diagram-lightbox-overlay" onClick={onClose}>
@@ -390,16 +377,16 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
             📄 Page {image.page} — {image.hierarchy} ({currentIndex + 1} / {images.length})
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={handleZoomOut} className="diagram-lightbox-btn" title="Zoom out (-)">
+            <button onClick={handleZoomOut} className="diagram-lightbox-btn" title="Zoom out">
               <ZoomOut size={14} />
             </button>
             <span className="text-[11px] font-mono px-2" style={{ color: 'var(--text-muted)' }}>
               {Math.round(zoom * 100)}%
             </span>
-            <button onClick={handleZoomIn} className="diagram-lightbox-btn" title="Zoom in (+)">
+            <button onClick={handleZoomIn} className="diagram-lightbox-btn" title="Zoom in">
               <ZoomIn size={14} />
             </button>
-            <button onClick={handleReset} className="diagram-lightbox-btn" title="Reset zoom (0)">
+            <button onClick={handleReset} className="diagram-lightbox-btn" title="Reset zoom">
               <RotateCw size={14} />
             </button>
             <button onClick={onClose} className="diagram-lightbox-btn diagram-lightbox-close" title="Close">
@@ -409,13 +396,16 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
         </div>
         {/* Image container */}
         <div 
-          ref={bodyRef} 
           className="diagram-lightbox-body relative" 
-          style={{ overflow: 'hidden' }}
-          onPointerDown={handlePointerDown}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
         >
           {images.length > 1 && (
-            <button onClick={handlePrev} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Previous (Left Arrow)">
+            <button onClick={handlePrev} className="absolute left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Previous (Left Arrow)">
               <ChevronLeft size={24} />
             </button>
           )}
@@ -425,14 +415,13 @@ export function DiagramLightbox({ images, currentIndex, onChangeIndex, onClose }
             style={{ 
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, 
               transformOrigin: 'center center', 
-              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-              cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+              transition: isDragging ? 'none' : 'transform 0.05s ease-out' 
             }}
             className="diagram-lightbox-img"
             draggable={false}
           />
           {images.length > 1 && (
-            <button onClick={handleNext} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Next (Right Arrow)">
+            <button onClick={handleNext} className="absolute right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-10" title="Next (Right Arrow)">
               <ChevronRight size={24} />
             </button>
           )}
@@ -590,7 +579,7 @@ function AnswerBadge({ mode, validated }) {
   }
   if (validated) {
     return (
-      <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+      <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
         <CheckCircle size={10} /> Validated
       </span>
     )
@@ -600,10 +589,16 @@ function AnswerBadge({ mode, validated }) {
 
 // ── Message bubbles ───────────────────────────────────────────────────────────
 
-function UserMessage({ text, image }) {
+function UserMessage({ text, image, userName }) {
+  const displayName = userName || 'You'
+  const initial = displayName.charAt(0).toUpperCase()
+
   return (
     <div className="flex items-start gap-3 justify-end msg-enter">
       <div className="max-w-[75%] flex flex-col items-end gap-2">
+        <div className="text-[14px] font-semibold mb-[-4px]" style={{ color: 'var(--text-secondary)' }}>
+          {displayName}
+        </div>
         {image && (
           <div className="rounded-2xl rounded-tr-md overflow-hidden border border-[var(--border)] max-w-sm">
             <img src={image} alt="User Uploaded" className="w-full h-auto object-cover" />
@@ -616,15 +611,15 @@ function UserMessage({ text, image }) {
           </div>
         )}
       </div>
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-semibold"
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-semibold mt-0.5"
         style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-        Y
+        {initial}
       </div>
     </div>
   )
 }
 
-function AssistantMessage({ response, streaming, streamStages, bookmarks, onToggleBookmark, onOpenFolderView }) {
+function AssistantMessage({ response, streaming, streamStages, bookmarks, onToggleBookmark, onOpenFolderView, onSend }) {
   const [showSources, setShowSources] = useState(false)
   const hasSources = response.sources?.length > 0
   const isBookmarked = bookmarks.some(b => b.question === response.question)
@@ -633,9 +628,12 @@ function AssistantMessage({ response, streaming, streamStages, bookmarks, onTogg
     <div className="flex items-start gap-3 msg-enter">
       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <Sparkles size={14} className="text-emerald-400" />
+        <Sparkles size={14} className="text-red-400" />
       </div>
       <div className="flex-1 min-w-0 space-y-2 max-w-[85%]">
+        <div className="text-[14px] font-semibold mb-[-4px]">
+          <span className="text-red-500">ISRA</span> <span style={{ color: 'var(--text-primary)' }}>Omi</span>
+        </div>
         {streaming && <StreamingIndicator />}
 
         {/* Retrieved Images (Diagrams) */}
@@ -649,7 +647,7 @@ function AssistantMessage({ response, streaming, streamStages, bookmarks, onTogg
                           prose-ul:my-5 prose-ol:my-5
                           prose-li:my-3
                           prose-headings:font-semibold prose-headings:mt-7 prose-headings:mb-4
-                          prose-code:text-emerald-400 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[15px]
+                          prose-code:text-red-400 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[15px]
                           prose-pre:rounded-xl prose-pre:my-5
                           prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline"
             style={{ '--tw-prose-body': 'var(--text-primary)', '--tw-prose-headings': 'var(--text-primary)', '--tw-prose-bold': 'var(--text-primary)', '--tw-prose-bullets': 'var(--text-muted)', '--tw-prose-counters': 'var(--text-muted)' }}>
@@ -716,13 +714,31 @@ function AssistantMessage({ response, streaming, streamStages, bookmarks, onTogg
             ))}
           </div>
         )}
+
+        {/* Follow-up Options */}
+        {!streaming && response.followUpOptions && (
+          <div className="flex flex-wrap gap-2 pt-2 mt-4 border-t border-[var(--border)]">
+            {response.followUpOptions.map((opt, i) => {
+              const label = typeof opt === 'string' ? opt : opt.label;
+              const query = typeof opt === 'string' ? opt : opt.query;
+              return (
+              <button
+                key={i}
+                onClick={() => onSend && onSend(query)}
+                className="px-3 py-1.5 text-[12.5px] rounded-full border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                {label}
+              </button>
+            )})}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-export function Message({ msg, bookmarks, onToggleBookmark, onOpenFolderView }) {
-  if (msg.role === 'user') return <UserMessage text={msg.text} image={msg.image} />
+export function Message({ msg, bookmarks, onToggleBookmark, onOpenFolderView, userName, onSend }) {
+  if (msg.role === 'user') return <UserMessage text={msg.text} image={msg.image} userName={userName} />
   return (
     <AssistantMessage
       response={msg.response}
@@ -731,6 +747,7 @@ export function Message({ msg, bookmarks, onToggleBookmark, onOpenFolderView }) 
       bookmarks={bookmarks}
       onToggleBookmark={onToggleBookmark}
       onOpenFolderView={onOpenFolderView}
+      onSend={onSend}
     />
   )
 }

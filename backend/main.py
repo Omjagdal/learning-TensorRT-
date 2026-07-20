@@ -1,78 +1,7 @@
 """
 main.py — FastAPI application entry point.
-Supports three run modes:
-  1. Development  — plain `python main.py` with system Ollama
-  2. Docker       — headless, DOCKER_ENV=true, Ollama is external
-  3. Desktop .exe — PyInstaller frozen, OllamaManager starts bundled Ollama
 """
 
-import sys
-import os
-import traceback
-from pathlib import Path
-
-def _write_crash_log(exctype, value, tb):
-    try:
-        desktop = Path.home() / "Desktop" / "isra_crash.txt"
-        with open(desktop, "w") as f:
-            f.write("ISRA Chatbot Crash Log\n")
-            f.write("========================\n")
-            f.write("".join(traceback.format_exception(exctype, value, tb)))
-    except:
-        pass
-    sys.__excepthook__(exctype, value, tb)
-
-sys.excepthook = _write_crash_log
-
-# ── PyInstaller / Frozen-app path setup ──────────────────────────────────────
-# CRITICAL: Must happen BEFORE importing ANYTHING from app.* so env vars are in place
-# before pydantic-settings reads them or before module-level code runs mkdir().
-_IS_FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
-
-if _IS_FROZEN:
-    _bundle_root = Path(sys.executable).parent
-    import platformdirs
-
-    # ── PORTABLE MODE: check for models/ folder next to the .exe ──────────────
-    _portable_models = _bundle_root / "models"
-    _portable_ollama  = _portable_models / "ollama_models"
-    _portable_hf      = _portable_models / "hf_cache"
-    _is_portable_mode = _portable_models.exists()
-
-    # ── INSTALLED MODE: use AppData\Local\ISRAVision\ISRAChatbot ──────────────
-    _user_data = Path(platformdirs.user_data_dir("ISRAChatbot", "ISRAVision"))
-    _user_data.mkdir(parents=True, exist_ok=True)
-
-    if _is_portable_mode and _portable_hf.exists():
-        _hf_cache = _portable_hf
-    else:
-        _hf_cache = _user_data / "hf_cache"
-        _hf_cache.mkdir(parents=True, exist_ok=True)
-
-    if _is_portable_mode and _portable_ollama.exists():
-        _ollama_models_dir = _portable_ollama
-    else:
-        _ollama_models_dir = _user_data / "ollama_models"
-        _ollama_models_dir.mkdir(parents=True, exist_ok=True)
-
-    os.environ["HF_HOME"] = str(_hf_cache)
-    os.environ["TRANSFORMERS_CACHE"] = str(_hf_cache / "hub")
-    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_hf_cache / "sentence_transformers")
-    os.environ.setdefault("OLLAMA_MODELS", str(_ollama_models_dir))
-
-    # Also route application data to AppData to avoid Program Files permission errors
-    os.environ["UPLOAD_DIR"] = str(_user_data / "manuals")
-    os.environ["QDRANT_EMBEDDED_PATH"] = str(_user_data / "qdrant_storage")
-    os.environ["MARKER_TELEMETRY"] = "false"
-    os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
-
-    _hf_models_ready = (_hf_cache / "hub" / "models--BAAI--bge-reranker-large").exists()
-    if _hf_models_ready:
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-        os.environ["HF_DATASETS_OFFLINE"] = "1"
-
-# Now we can safely import our app modules, because os.environ is fully populated.
 from contextlib import asynccontextmanager
 import threading
 import logging as builtin_logging
@@ -80,6 +9,7 @@ import logging as builtin_logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
@@ -102,12 +32,13 @@ from app.schemas import HealthResponse
 
 settings = get_settings()
 
-if settings.offline_mode and not _IS_FROZEN:
-    # Development offline mode — same guards, but paths already correct
-    os.environ.setdefault("HF_HUB_OFFLINE", "1")
-    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-    os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+import os
+if settings.offline_mode:
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    os.environ["HF_DATASETS_OFFLINE"] = "1"
     os.environ["MARKER_TELEMETRY"] = "false"
+    # Prevent PaddleOCR from downloading models at runtime
     os.environ["PADDLE_OCR_DOWNLOAD"] = "false"
 
 
@@ -131,35 +62,23 @@ class InterceptHandler(builtin_logging.Handler):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Setup logging — route logs to the correct directory
-    if _IS_FROZEN:
-        if _is_portable_mode:
-            logs_dir = _bundle_root / "logs"
-        else:
-            logs_dir = _user_data / "logs"
-    else:
-        logs_dir = Path(__file__).parent.parent / "logs"
-
-    setup_logging(settings.debug, logs_dir)
+    # Setup logging
+    setup_logging(settings.debug)
     builtin_logging.basicConfig(handlers=[InterceptHandler()], level=0)
-
+    
     # Suppress verbose HuggingFace logs
     builtin_logging.getLogger("sentence_transformers").setLevel(builtin_logging.WARNING)
     builtin_logging.getLogger("transformers").setLevel(builtin_logging.WARNING)
-
+    
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-
-    # 0. Check compute mode (CPU only)
-    from app.core.gpu_check import get_gpu_status
-    get_gpu_status()
 
     # 1. Initialize Vector Store (Qdrant)
     store = get_qdrant_store()
     logger.info(f"Connected to Qdrant. Total points: {store.total_points}")
-
+    
     # 2. Rebuild BM25 Index
     bm25 = get_bm25_index()
-
+    
     # 3. Load Hierarchical PageIndex
     page_index = get_page_index()
     manuals = list_manuals()
@@ -170,6 +89,8 @@ async def lifespan(app: FastAPI):
             page_index.load(mid, chunks)
 
     # 4. Eagerly import heavy ML libraries on main thread
+    # Prevents multithreading import race conditions (e.g., torch RpcBackendOptions error)
+    # when background threads try to import them simultaneously.
     try:
         import torch
         import transformers
@@ -178,11 +99,12 @@ async def lifespan(app: FastAPI):
         pass
 
     # 5. Background model loading
+    # Load ML models in background so server starts instantly
     threading.Thread(target=load_embedding_model, daemon=True).start()
-
+    
     if settings.reranker_enabled:
         threading.Thread(target=load_reranker_model, daemon=True).start()
-
+        
     if settings.llm_fallback_enabled:
         threading.Thread(target=_load_hf_pipeline, daemon=True).start()
 
@@ -225,12 +147,12 @@ app.include_router(info_router, prefix="/api/v1")
 async def health():
     store = get_qdrant_store()
     manuals = list_manuals()
-
+    
     try:
         qdrant_online = store.client is not None
     except Exception:
         qdrant_online = False
-
+        
     return HealthResponse(
         status="ok",
         version=settings.app_version,
@@ -241,12 +163,7 @@ async def health():
     )
 
 
-if _IS_FROZEN:
-    # PyInstaller --onedir: frontend/dist is bundled alongside the .exe
-    frontend_dist = Path(sys.executable).parent / "frontend" / "dist"
-else:
-    # Development: standard relative path from the backend folder
-    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 
 if frontend_dist.exists():
     # Serve all static assets from the dist folder (JS, CSS, images, logo.png)
@@ -258,12 +175,14 @@ if frontend_dist.exists():
         file_path = frontend_dist / f"{filename}.{ext}"
         if file_path.exists() and file_path.is_file():
             return FileResponse(str(file_path))
+        # Fallback to index.html (SPA routing)
         return FileResponse(str(frontend_dist / "index.html"))
 
     @app.get("/{catchall:path}", tags=["Frontend"])
     async def serve_frontend(catchall: str):
         if catchall.startswith("api/"):
             return {"detail": "Not Found"}
+        # Serve index.html for all other routes to support React Router
         index_path = frontend_dist / "index.html"
         if not index_path.exists():
             return {"message": "Frontend not built. Run 'npm run build' in frontend dir."}
@@ -271,71 +190,75 @@ if frontend_dist.exists():
 else:
     @app.get("/", tags=["Root"])
     async def root():
-        return {"message": f"Welcome to {settings.app_name}. Frontend not built.", "docs": "/docs"}
+        return {"message": f"Welcome to {settings.app_name}. Frontend not built. Run 'npm run build' in frontend dir.", "docs": "/docs"}
 
 
 if __name__ == "__main__":
     import multiprocessing
+    import platform
+    import subprocess
+    import threading
     import time
     import requests
     import uvicorn
+    import webview
 
-    # ── PyInstaller freeze support (must be first) ─────────────────────────────
+    # Freeze support for PyInstaller
     multiprocessing.freeze_support()
 
-    # ── Detect Docker headless mode ───────────────────────────────────────────
-    is_docker = os.environ.get("DOCKER_ENV") == "true"
-
-    # ── Desktop mode: start Ollama via OllamaManager ──────────────────────────
-    if not is_docker:
-        from app.core.ollama_manager import start_ollama, stop_ollama
-        import webview
-
-        logger.info("Desktop mode — initializing Ollama manager...")
-        ollama_ok = start_ollama()
-        if not ollama_ok:
-            logger.warning(
-                "Ollama could not be started. The LLM will be unavailable. "
-                "Check that the bundled Ollama binary and models are present."
+    # Check and start Ollama
+    if platform.system() == "Windows":
+        try:
+            output = subprocess.check_output(
+                'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
+            ).decode()
+            if "ollama.exe" not in output:
+                logger.info("Ollama is not running. Starting ollama serve...")
+                subprocess.Popen(
+                    ["ollama", "serve"], creationflags=subprocess.CREATE_NO_WINDOW
+                )
+            else:
+                logger.info("Ollama is already running.")
+        except Exception as e:
+            logger.error(f"Failed to check or start Ollama: {e}")
+    elif platform.system() == "Darwin":  # macOS
+        try:
+            result = subprocess.run(
+                ["pgrep", "-x", "ollama"],
+                capture_output=True, text=True,
             )
+            if result.returncode != 0:
+                logger.info("Ollama is not running on macOS. Starting ollama serve...")
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                time.sleep(2)  # Give Ollama a moment to start
+            else:
+                logger.info("Ollama is already running on macOS.")
+        except Exception as e:
+            logger.warning(f"Could not check/start Ollama on macOS: {e}")
 
-    # ── Server runner ─────────────────────────────────────────────────────────
-    if is_docker:
-        def run_server():
-            """Start the FastAPI/Uvicorn server for Docker."""
-            logger.info("Starting FastAPI server via Uvicorn on port 8000...")
-            try:
-                uvicorn.run(app, host="0.0.0.0", port=settings.port, workers=1, log_config=None)
-            except Exception as e:
-                logger.error(f"Uvicorn server crashed: {e}")
-                _write_crash_log(type(e), e, e.__traceback__)
-        # Docker: run blocking on the main thread
-        run_server()
-    else:
-        # Desktop: Let PyWebView natively host the ASGI app on a random internal port!
-        # This completely removes port conflicts (e.g. port 8000 in use).
-        logger.info("Opening native desktop window (Internal Ephemeral Port)...")
-        window = webview.create_window(
-            settings.app_name,
-            app,  # Pass the ASGI app directly instead of a string URL!
-            width=1400,
-            height=860,
-            min_size=(900, 600),
-            resizable=True,
-        )
+    def run_server():
+        logger.info("Starting production server via Uvicorn...")
+        uvicorn.run("main:app", host=settings.host, port=settings.port, workers=1)
 
-        def on_window_closed():
-            """Called by pywebview when the user closes the window."""
-            logger.info("Window closed — shutting down...")
-            stop_ollama()
+    # Start FastAPI in a background thread
+    t = threading.Thread(target=run_server, daemon=True)
+    t.start()
 
-        window.events.closed += on_window_closed
+    # Wait for server to start
+    # WebView cannot resolve 0.0.0.0, so we use 127.0.0.1
+    server_url = f"http://127.0.0.1:{settings.port}"
+    for _ in range(30):
+        try:
+            if requests.get(server_url + "/api/v1/health").status_code == 200:
+                break
+        except Exception:
+            time.sleep(0.5)
 
-        # Start the webview event loop (blocks until window is closed)
-        webview.start(
-            private_mode=False,
-            debug=settings.debug,
-        )
-
-        # Clean shutdown after window closes
-        logger.info("Application exiting.")
+    # Create native desktop window
+    logger.info("Starting Desktop Window...")
+    webview.create_window(settings.app_name, server_url, width=1200, height=800)
+    webview.start(private_mode=False)

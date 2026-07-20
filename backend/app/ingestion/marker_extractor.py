@@ -27,16 +27,8 @@ def _get_marker_binary() -> str:
 
 
 def _get_env() -> dict:
-    """Build environment with libmagic paths for macOS Homebrew and strict offline mode."""
+    """Build environment with libmagic paths for macOS Homebrew."""
     env = os.environ.copy()
-    
-    # Enforce strict offline mode for Marker to prevent runtime downloads
-    env["PADDLE_OCR_DOWNLOAD"] = "false"
-    env["MARKER_TELEMETRY"] = "false"
-    env["HF_HUB_OFFLINE"] = "1"
-    env["TRANSFORMERS_OFFLINE"] = "1"
-    env["HF_DATASETS_OFFLINE"] = "1"
-    
     # Ensure Homebrew's lib is on the library search path
     homebrew_lib = "/opt/homebrew/lib"
     if os.path.isdir(homebrew_lib):

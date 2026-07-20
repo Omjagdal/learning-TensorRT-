@@ -197,6 +197,15 @@ def perform_hybrid_search(
     manual_ids: Optional[list[str]] = None,
 ) -> list[dict]:
     """Convenience function for hybrid search."""
+    import time
+    from app.core.logging import log_retrieval
+    
+    start_time = time.perf_counter()
     engine = HybridSearchEngine()
     method = "hybrid" if settings.bm25_enabled else "vector"
-    return engine.search(query, top_k=top_k, manual_ids=manual_ids, method=method)
+    results = engine.search(query, top_k=top_k, manual_ids=manual_ids, method=method)
+    
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    log_retrieval(question=query, num_results=len(results), search_type=method, duration_ms=duration_ms)
+    
+    return results

@@ -248,7 +248,7 @@ export default function KnowledgeInfo({ data, onClose }) {
           <div className="flex items-center gap-2">
             {data.offline_mode && (
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs"
-                    style={{ background: 'var(--bg-tertiary)', color: 'var(--accent-green)', border: '1px solid var(--border)' }}>
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--accent-primary)', border: '1px solid var(--border)' }}>
                 <HardDrive size={10} /> Offline
               </span>
             )}

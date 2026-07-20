@@ -1,74 +1,48 @@
-# ISRA Vision Industrial AI Assistant
+# ISRA VISION OMI Assistant
 
-A production-ready, **100% offline** Retrieval-Augmented Generation (RAG) system specialized for querying industrial machinery manuals, SOPs, and technical PDFs. 
+A production-ready Retrieval-Augmented Generation (RAG) system specialized for querying industrial machinery manuals (PDFs). Built with FastAPI, embedded Qdrant, Ollama, BGE-M3, and React. 
 
-Built using a modern desktop architecture: **Tauri (Rust) + React + Python (FastAPI)**.
+**This project runs as a fully offline, native desktop application using PyWebView.**
 
 ## Key Features
-- **Fully Offline Desktop App**: Runs securely with zero internet connection via a native Tauri window.
 - **Hierarchical PageIndex**: Preserves Manual → Chapter → Section → Page hierarchy.
-- **Hybrid Search**: Combines Dense Vector Search (BGE-M3) with Sparse Keyword Search (BM25).
+- **Hybrid Search**: Combines Qdrant Dense Vector Search (BGE-M3 via Ollama) with Sparse Keyword Search (BM25).
 - **Cross-Encoder Reranking**: Uses BGE-Reranker-Large to massively improve retrieval precision.
-- **Local LLM Integration**: Uses Qwen3 via Ollama for entirely private inference.
-- **Citation Engine**: Every answer includes precise citations linking to the source manual and page number.
-- **Structured Logging**: Maintains detailed `application.log`, `backend.log`, `rag.log`, `error.log`, and `performance.log`.
-
-## Architecture (DPR Compliant)
-```text
-Chatbot.exe (Tauri Rust Shell)
-│
-├── Spawns → backend_server.exe (Python PyInstaller Sidecar)
-│               ├── FastAPI Server (127.0.0.1:8765)
-│               ├── Qdrant Vector DB
-│               ├── PDF Parser (Marker)
-│               ├── BGE-M3 + Reranker
-│               └── Ollama (Qwen3)
-│
-└── Opens WebView2 Window → Native Desktop UI
-```
+- **Ollama Integration**: Runs Qwen3 locally with HTTP API streaming.
+- **Dynamic Mermaid Diagrams**: Automatically maps out logic, steps, and technical concepts using linear flowcharts directly in the chat UI.
+- **Citation Engine**: Every answer includes precise citations linking to the source manual, chapter, and page number, along with image extracts.
+- **Self-RAG Pipeline**: 6-stage pipeline (Classify → Retrieve → Rerank → Generate → Validate → Fallback).
+- **Fully Offline**: Uses an embedded Qdrant vector database—no Docker required!
 
 ## Getting Started
 
-### 1. Prerequisites (Development)
-- **Rust**: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-- **Node.js**: v22+
-- **Python**: 3.10+
-- **Ollama**: Installed locally
+### 1. Prerequisites
+- **Ollama**: Must be installed on your system.
+- **Python 3.10+** (for the backend environment).
+- *(Note: Node.js is only required for frontend development, and Docker is no longer required).*
 
-### 2. Development Run
-You can run the application locally without compiling it to an `.exe`:
+### 2. Install Required Models
+Make sure you have pulled the required models in Ollama:
 ```bash
-# Terminal 1: Start the backend
-cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python main.py
-
-# Terminal 2: Start the frontend
-cd frontend
-npm install
-npm run dev
+ollama pull qwen3:8b
+ollama pull bge-m3
 ```
 
-### 3. Building for Production (Windows)
-The CI pipeline handles this automatically, but to build manually on Windows:
+### 3. Launch the Application
+
+You do not need to start the frontend and backend separately. The project includes automated launch scripts that will start the backend, start Ollama if it's not running, and open the desktop GUI window.
+
+**On macOS / Linux:**
+```bash
+bash test_desktop_mac.sh
+```
+
+**On Windows:**
 ```cmd
-# 1. Build the Python backend sidecar
-cd backend
-pip install pyinstaller
-pyinstaller --clean -y ../isra_chatbot.spec
-
-# 2. Build the Tauri frontend shell
-cd ../src-tauri
-cargo tauri build --target x86_64-pc-windows-msvc
+test_desktop_windows.bat
 ```
-This produces three artifacts in `src-tauri/target/.../bundle/`:
-- NSIS Installer (`.exe` setup)
-- MSI Installer
-- Portable Executable
+
+*(Note: `build_exe.bat` is also available for bundling the app via PyInstaller).*
 
 ## Configuration
-Users can modify the application behavior by editing `config/config.json`.
-There is no need to recompile the application to change models, vector databases, or retrieval limits.
-
-*Note: GPU usage is currently disabled by user request to ensure maximum compatibility across all machines.*
+Edit `backend/.env` to configure models, chunk sizes, and feature toggles.

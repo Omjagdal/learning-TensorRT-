@@ -11,7 +11,6 @@ Supports the full Industrial Manual Chatbot stack:
   - Hierarchical PageIndex RAG
 """
 
-import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -103,46 +102,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    import json
-    
     s = Settings()
-    
-    # ── Load config.json overrides (DPR Section 11) ──────────────────────────
-    # Look for config.json relative to the backend package root or the executable root
-    _bundle_root = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parents[2]
-    config_paths = [
-        _bundle_root / "config" / "config.json",
-        Path("backend/config/config.json").resolve(),
-    ]
-    
-    for config_path in config_paths:
-        if config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    overrides = json.load(f)
-                    
-                # Map JSON keys to Pydantic attributes
-                key_mapping = {
-                    "app_name": "app_name",
-                    "debug": "debug",
-                    "offline_mode": "offline_mode",
-                    "qdrant_collection_name": "qdrant_collection",
-                    "bge_model_name": "embedding_model_name",
-                    "reranker_model_name": "reranker_model_name",
-                    "ollama_host": "ollama_base_url",
-                    "ollama_model": "ollama_model",
-                    "top_k_retrieve": "retrieval_top_k",
-                    "top_k_rerank": "reranker_top_k",
-                }
-                
-                for json_key, attr_name in key_mapping.items():
-                    if json_key in overrides and hasattr(s, attr_name):
-                        setattr(s, attr_name, overrides[json_key])
-                        
-                break # Loaded successfully, no need to check other paths
-            except Exception as e:
-                # Can't use loguru yet because logger might not be initialized
-                print(f"Failed to load {config_path}: {e}")
-
     s.ensure_dirs()
     return s

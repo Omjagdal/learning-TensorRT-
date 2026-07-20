@@ -8,50 +8,61 @@ import KnowledgeInfo from './components/KnowledgeInfo'
 import FolderView from './components/FolderView'
 
 const SUGGESTION_PROMPTS = [
-  "Explain the SOP (Standard Operating Procedure) diagram & its steps.",
-  "What are the key Do's and Don'ts?",
-  "Explain the vision teaching and parametrization steps.",
-  "What are the limits for Bead Width and how do I set them in teach mode? Provide an example.",
-  "How does the image recording sequence work?",
-  "Describe the control architecture of the QUISS Vision2D.",
-  "Show me the electrical connections with a diagram.",
-  "Provide hardware information about sensors and cables with a diagram."
+  'Explain me the SOP(standard operating procedure) diagram & its steps',
+  "What are the Do's and Don'ts?",
+  'Explain vision teaching and parametrization steps.',
+  'What are the limits for bead width?',
+  'How does the image recording sequence work?',
+  'Describe the control architecture of quiss vision2d .',
+  'What are the electrical connections with diagram?',
+  'Provide hardware information about sensors and cables diagram.'
 ]
 
-function EmptyState({ onSend, disabled }) {
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-
+function EmptyState({ onSuggest, disabled, userName }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-8 pb-4">
       {/* Green gradient orb */}
-      <div className="green-orb mb-10" />
+      <div className="brand-orb mt-16 mb-10" />
 
       {/* Greeting */}
-      <h2 className="text-[32px] md:text-[40px] font-semibold leading-tight tracking-tight mb-2" style={{ color: 'var(--text-primary)' }}>
-        {greeting}
+      <h2 className="text-[32px] md:text-[40px] font-bold leading-tight tracking-tight mb-2">
+        <span style={{ color: 'var(--accent-primary)' }}>ISRA</span>{' '}
+        <span style={{ color: 'var(--text-primary)' }}>VISION</span>
       </h2>
-      <h3 className="text-[32px] md:text-[40px] font-semibold leading-tight tracking-tight mb-4" style={{ color: 'var(--text-secondary)' }}>
-        Can I help you with anything?
-      </h3>
-      <p className="text-[14px] max-w-md mb-10 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-        Choose a prompt below or write your own to start<br />
-        chatting with ISRA Vision Chatbot Assistant
-      </p>
 
-      {/* Suggestion cards */}
-      <div className="flex flex-wrap justify-center gap-3 max-w-3xl">
-        {SUGGESTION_PROMPTS.map(q => (
-          <button
-            key={q}
-            onClick={() => onSend(q)}
-            disabled={disabled}
-            className="suggestion-card"
-          >
-            {q}
-          </button>
-        ))}
-      </div>
+      {!userName ? (
+        <>
+          <h3 className="text-[26px] md:text-[32px] font-medium leading-tight tracking-tight mt-6 mb-4" style={{ color: 'var(--text-secondary)' }}>
+            Hello, I am <span style={{ color: 'var(--accent-primary)' }}>ISRA</span> <span style={{ color: 'var(--text-primary)' }}>Omi</span>. Kindly can you share yor name?
+          </h3>
+          <p className="text-[16px] max-w-lg mb-10 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Please type your name below to get started.
+          </p>
+        </>
+      ) : (
+        <>
+          <h3 className="text-[26px] md:text-[32px] font-medium leading-tight tracking-tight mt-6 mb-4" style={{ color: 'var(--text-secondary)' }}>
+            Hello {userName}, How can I help you?
+          </h3>
+          <p className="text-[16px] max-w-lg mb-10 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Select a suggested prompt below, or type your own question to begin our session.
+          </p>
+
+          {/* Suggestion cards */}
+          <div className="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto">
+            {SUGGESTION_PROMPTS.map(q => (
+              <button
+                key={q}
+                onClick={() => onSuggest(q)}
+                disabled={disabled}
+                className="suggestion-card"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -67,6 +78,8 @@ export default function App() {
   const [knowledgeData, setKnowledgeData] = useState(null)
   const [theme, setTheme] = useState('dark')
   const [folderViewData, setFolderViewData] = useState(null)
+  const [suggestion, setSuggestion] = useState(null)
+  const [userName, setUserName] = useState('')
 
   // Bookmarks state from localStorage
   const [bookmarks, setBookmarks] = useState(() => {
@@ -95,7 +108,8 @@ export default function App() {
           answer: response.answer,
           sources: response.sources,
           images: response.images,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          savedBy: userName
         }]
       }
     })
@@ -176,7 +190,7 @@ export default function App() {
     if (autoScrollEnabled.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'instant' })
     }
-  }, [messages, loading])
+  }, [messages.length])
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target
@@ -219,6 +233,14 @@ export default function App() {
   // ── Send query (SSE streaming) ────────────────────────────────────────────
 
   const handleSend = async (question, imageBase64 = null) => {
+    if (!userName) {
+      const name = question.trim()
+      if (name) {
+        setUserName(name)
+      }
+      return
+    }
+
     // Add user message
     const userMsgId = Date.now()
     const assistantMsgId = userMsgId + 1
@@ -255,77 +277,86 @@ export default function App() {
       )
     }
 
-    abortRef.current = streamQuery(
-      question,
-      selectedIds.length > 0 ? selectedIds : null,
-      imageBase64,
-      {
-        onStage: (data) => {
-          updateAssistant(msg => ({
-            streamStages: {
-              ...msg.streamStages,
-              [data.stage]: data,
-            },
-          }))
-        },
+    // Artificial delay to simulate human typing
+    setTimeout(() => {
+      abortRef.current = streamQuery(
+        question,
+        selectedIds.length > 0 ? selectedIds : null,
+        imageBase64,
+        {
+          onStage: (data) => {
+            updateAssistant(msg => ({
+              streamStages: {
+                ...msg.streamStages,
+                [data.stage]: data,
+              },
+            }))
+          },
 
-        onImages: (data) => {
-          updateAssistant(msg => ({
-            response: {
-              ...msg.response,
-              images: data,
-            },
-          }))
-        },
+          onImages: (data) => {
+            updateAssistant(msg => ({
+              response: {
+                ...msg.response,
+                images: data,
+              },
+            }))
+          },
 
-        onToken: (data) => {
-          updateAssistant(msg => ({
-            response: {
-              ...msg.response,
-              answer: data.replace
-                ? data.text
-                : msg.response.answer + data.text,
-            },
-          }))
-        },
+          onToken: (data) => {
+            updateAssistant(msg => ({
+              response: {
+                ...msg.response,
+                answer: data.replace
+                  ? data.text
+                  : msg.response.answer + data.text,
+              },
+            }))
+          },
 
-        onDone: (data) => {
-          updateAssistant(msg => ({
-            streaming: false,
-            streamStages: null,
-            response: {
-              ...msg.response,
-              sources: data.sources || [],
-              images: data.images || [],
-              processing_time_ms: data.processing_time_ms || 0,
-              answer_mode: data.answer_mode || 'generated',
-              is_validated: data.is_validated || false,
-              // Convert streamStages to pipeline_steps for final display
-              pipeline_steps: Object.entries(msg.streamStages || {}).map(([name, s]) => ({
-                name,
-                status: s.status === 'running' ? 'completed' : s.status,
-                duration_ms: s.duration_ms || 0,
-                detail: s.result || null,
-              })),
-            },
-          }))
-          setLoading(false)
-        },
+          onDone: (data) => {
+            updateAssistant(msg => ({
+              streaming: false,
+              streamStages: null,
+              response: {
+                ...msg.response,
+                answer: msg.response.answer + `\n\n*Was this helpful, ${userName}? Or do you require further assistance?*`,
+                followUpOptions: [
+                  { label: "Give a deeper explanation", query: `Give a deeper explanation of: ${msg.response.question}` },
+                  { label: "Explain this more simply", query: `Explain this more simply: ${msg.response.question}` },
+                  { label: "I have a similar question but different topic", query: `I have a similar question but on a different topic. Similar to: ${msg.response.question}` }
+                ],
+                sources: data.sources || [],
+                images: data.images || [],
+                processing_time_ms: data.processing_time_ms || 0,
+                answer_mode: data.answer_mode || 'generated',
+                is_validated: data.is_validated || false,
+                // Convert streamStages to pipeline_steps for final display
+                pipeline_steps: Object.entries(msg.streamStages || {}).map(([name, s]) => ({
+                  name,
+                  status: s.status === 'running' ? 'completed' : s.status,
+                  duration_ms: s.duration_ms || 0,
+                  detail: s.result || null,
+                })),
+              },
+            }))
+            setLoading(false)
+          },
 
-        onError: (error) => {
-          updateAssistant(msg => ({
-            streaming: false,
-            streamStages: null,
-            response: {
-              ...msg.response,
-              answer: `⚠️ **Error:** ${error}`,
-              answer_mode: 'generated',
-            },
-          }))
-          setLoading(false)
-        },
-      }
-    )
+          onError: (error) => {
+            updateAssistant(msg => ({
+              streaming: false,
+              streamStages: null,
+              response: {
+                ...msg.response,
+                answer: `⚠️ **Error:** ${error}`,
+                answer_mode: 'generated',
+              },
+            }))
+            setLoading(false)
+          },
+        }
+      )
+    }, 1200)
   }
 
   const handleStop = () => {
@@ -391,7 +422,7 @@ export default function App() {
                 onScroll={handleScroll}
               >
                 {!hasMessages ? (
-                  <EmptyState onSend={handleSend} disabled={nothingIndexed} />
+                  <EmptyState onSuggest={(text) => setSuggestion({ text, id: Date.now() })} disabled={nothingIndexed} userName={userName} />
                 ) : (
                   <div className="max-w-3xl mx-auto space-y-6">
                     {messages.map(msg => (
@@ -401,6 +432,8 @@ export default function App() {
                         bookmarks={bookmarks}
                         onToggleBookmark={toggleBookmark}
                         onOpenFolderView={setFolderViewData}
+                        userName={userName}
+                        onSend={handleSend}
                       />
                     ))}
                   </div>
@@ -415,23 +448,19 @@ export default function App() {
 
               {/* Input */}
               <ChatInput
+                suggestion={suggestion}
                 onSend={handleSend}
                 onStop={handleStop}
                 loading={loading}
                 disabled={nothingIndexed}
+                userName={userName}
               />
             </>
           )}
         </main>
       </div>
 
-      {/* Knowledge Info Modal */}
-      {showKnowledge && (
-        <KnowledgeInfo
-          data={knowledgeData}
-          onClose={() => setShowKnowledge(false)}
-        />
-      )}
+
     </div>
   )
 }

@@ -29,6 +29,11 @@ function BookmarkItem({ bookmark, onSelect, onRemove }) {
       <p className="text-xs text-[var(--text-muted)] line-clamp-1 opacity-80">
         {bookmark.answer}
       </p>
+      {bookmark.savedBy && (
+        <p className="text-[10px] text-yellow-500/80 mt-0.5">
+          Saved by {bookmark.savedBy}
+        </p>
+      )}
     </div>
   )
 }
@@ -53,18 +58,18 @@ function ManualItem({ manual, isSelected, onToggle, onDelete }) {
       className={clsx(
         'group flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200',
         isSelected
-          ? 'bg-emerald-500/10 border border-emerald-500/20'
+          ? 'bg-transparent border border-[var(--border-hover)]'
           : 'hover:bg-[var(--bg-tertiary)] border border-transparent'
       )}
     >
       <div className={clsx('mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors',
-        isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-[var(--border)]'
+        isSelected ? 'bg-[var(--text-secondary)] border-[var(--text-secondary)]' : 'border-[var(--border)]'
       )}>
         {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className={clsx('text-sm font-medium truncate transition-colors',
-          isSelected ? 'text-emerald-300' : ''
+          isSelected ? 'text-[var(--text-primary)]' : ''
         )} style={isSelected ? {} : { color: 'var(--text-secondary)' }}>
           {manual.filename || manual.file_name}
         </p>
@@ -188,7 +193,7 @@ export default function Sidebar({ manuals, selectedIds, onToggle, onRefresh, loa
         <div className="flex px-4 pt-2 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <button
             onClick={() => setActiveTab('manuals')}
-            className={clsx('pb-2 text-sm font-medium transition-colors border-b-2', activeTab === 'manuals' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]')}
+            className={clsx('pb-2 text-sm font-medium transition-colors border-b-2', activeTab === 'manuals' ? 'border-red-500 text-red-500' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]')}
           >
             Manuals
           </button>
@@ -211,7 +216,7 @@ export default function Sidebar({ manuals, selectedIds, onToggle, onRefresh, loa
           </div>
           <div className="w-full h-1.5 bg-gray-500/20 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-emerald-500 transition-all duration-300 ease-out" 
+              className="h-full bg-red-500 transition-all duration-300 ease-out" 
               style={{ width: `${uploadProgress}%` }}
             />
           </div>

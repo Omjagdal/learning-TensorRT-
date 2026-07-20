@@ -18,6 +18,7 @@ from typing import Generator, Optional
 from loguru import logger
 
 from app.core.config import get_settings
+from app.core.logging import log_retrieval
 from app.database.qdrant_store import get_qdrant_store
 from app.embeddings.bge_m3 import get_embedder as get_bge_embedder
 from app.llm.qwen_service import (classify_query, generate_answer,

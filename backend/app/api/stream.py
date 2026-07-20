@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
+from app.core.logging import log_query
 from app.database.qdrant_store import get_qdrant_store
 from app.rag.pipeline import stream_rag_pipeline
 from app.schemas import ChatRequest
@@ -23,6 +24,8 @@ def _sse_format(event: str, data: dict) -> str:
 @router.post("/stream")
 async def chat_stream(request: ChatRequest):
     """SSE streaming endpoint for Self-RAG pipeline."""
+    log_query(request.question, request.manual_ids)
+    
     qdrant = get_qdrant_store()
     if qdrant.total_points == 0:
         raise HTTPException(
