@@ -282,65 +282,40 @@ if __name__ == "__main__":
     port_file.write_text(str(port))
     logger.info(f"Backend port: {port} (written to {port_file})")
 
-    # ── Start Ollama ─────────────────────────────────────────────────────────
-    # Try bundled Ollama first (frozen exe), then system Ollama
-    ollama_exe = BASE_DIR / "ollama" / "ollama.exe"
-    ollama_models = BASE_DIR / "ollama" / "models"
-
-    if ollama_exe.exists():
-        # Use bundled Ollama with bundled models
-        os.environ["OLLAMA_MODELS"] = str(ollama_models)
-        logger.info(f"Starting bundled Ollama from: {ollama_exe}")
+    # ── Start System Ollama ──────────────────────────────────────────────────
+    if platform.system() == "Windows":
         try:
-            if platform.system() == "Windows":
+            output = subprocess.check_output(
+                'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
+            ).decode()
+            if "ollama.exe" not in output:
+                logger.info("Ollama is not running. Starting ollama serve...")
                 subprocess.Popen(
-                    [str(ollama_exe), "serve"],
+                    ["ollama", "serve"],
                     creationflags=subprocess.CREATE_NO_WINDOW,
                 )
             else:
+                logger.info("Ollama is already running.")
+        except Exception as e:
+            logger.error(f"Failed to check or start Ollama: {e}")
+    elif platform.system() == "Darwin":  # macOS
+        try:
+            result = subprocess.run(
+                ["pgrep", "-x", "ollama"],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                logger.info("Starting ollama serve on macOS...")
                 subprocess.Popen(
-                    [str(ollama_exe), "serve"],
+                    ["ollama", "serve"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-            time.sleep(2)
+                time.sleep(2)
+            else:
+                logger.info("Ollama is already running on macOS.")
         except Exception as e:
-            logger.error(f"Failed to start bundled Ollama: {e}")
-    else:
-        # Use system Ollama
-        if platform.system() == "Windows":
-            try:
-                output = subprocess.check_output(
-                    'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
-                ).decode()
-                if "ollama.exe" not in output:
-                    logger.info("Ollama is not running. Starting ollama serve...")
-                    subprocess.Popen(
-                        ["ollama", "serve"],
-                        creationflags=subprocess.CREATE_NO_WINDOW,
-                    )
-                else:
-                    logger.info("Ollama is already running.")
-            except Exception as e:
-                logger.error(f"Failed to check or start Ollama: {e}")
-        elif platform.system() == "Darwin":  # macOS
-            try:
-                result = subprocess.run(
-                    ["pgrep", "-x", "ollama"],
-                    capture_output=True, text=True,
-                )
-                if result.returncode != 0:
-                    logger.info("Starting ollama serve on macOS...")
-                    subprocess.Popen(
-                        ["ollama", "serve"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-                    time.sleep(2)
-                else:
-                    logger.info("Ollama is already running on macOS.")
-            except Exception as e:
-                logger.warning(f"Could not check/start Ollama on macOS: {e}")
+            logger.warning(f"Could not check/start Ollama on macOS: {e}")
 
     # ── Run headless server (Tauri handles the window) ───────────────────────
     logger.info(f"Starting headless server on 127.0.0.1:{port}...")
