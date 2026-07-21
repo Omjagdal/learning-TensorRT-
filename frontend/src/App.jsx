@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { listManuals, deleteManual, streamQuery, getHealth, getKnowledgeBase } from './utils/api'
+import { listManuals, deleteManual, streamQuery, getHealth, getKnowledgeBase, getLicenseStatus } from './utils/api'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import ChatInput from './components/ChatInput'
 import { Message, TypingIndicator } from './components/Message'
 import KnowledgeInfo from './components/KnowledgeInfo'
 import FolderView from './components/FolderView'
+import LicenseGate from './components/LicenseGate'
 
 const SUGGESTION_PROMPTS = [
-  'Explain me the SOP(standard operating procedure) diagram & its steps',
+  'Explain me the SOP (Standard operating procedure)',
   "What are the Do's and Don'ts?",
   'Explain vision teaching and parametrization steps.',
   'What are the limits for bead width?',
-  'How does the image recording sequence work?',
-  'Describe the control architecture of quiss vision2d .',
+  'How does the image recording sequence work?'
+  'Describe the control architecture.',
   'What are the electrical connections with diagram?',
   'Provide hardware information about sensors and cables diagram.'
 ]
@@ -33,7 +34,7 @@ function EmptyState({ onSuggest, disabled, userName }) {
       {!userName ? (
         <>
           <h3 className="text-[26px] md:text-[32px] font-medium leading-tight tracking-tight mt-6 mb-4" style={{ color: 'var(--text-secondary)' }}>
-            Hello, I am <span style={{ color: 'var(--accent-primary)' }}>ISRA</span> <span style={{ color: 'var(--text-primary)' }}>Omi</span>. Kindly can you share yor name?
+            Hello, I am <span style={{ color: 'var(--accent-primary)' }}>ISRA</span> <span style={{ color: 'var(--text-primary)' }}>Omi</span>. Kindly share your name?
           </h3>
           <p className="text-[16px] max-w-lg mb-10 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             Please type your name below to get started.
@@ -80,6 +81,8 @@ export default function App() {
   const [folderViewData, setFolderViewData] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
   const [userName, setUserName] = useState('')
+  const [licenseStatus, setLicenseStatus] = useState(null)  // null = loading, object = result
+  const [licenseChecked, setLicenseChecked] = useState(false)
 
   // Bookmarks state from localStorage
   const [bookmarks, setBookmarks] = useState(() => {
@@ -183,6 +186,21 @@ export default function App() {
   }, [])
 
   useEffect(() => { fetchManuals() }, [fetchManuals])
+
+  // ── License check ─────────────────────────────────────────────────────────
+
+  const checkLicense = useCallback(async () => {
+    try {
+      const res = await getLicenseStatus()
+      setLicenseStatus(res.data)
+    } catch {
+      setLicenseStatus({ status: 'not_activated', message: 'Could not check license status.', machine_id: '' })
+    } finally {
+      setLicenseChecked(true)
+    }
+  }, [])
+
+  useEffect(() => { checkLicense() }, [checkLicense])
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────
 
@@ -380,6 +398,23 @@ export default function App() {
   const hasMessages = messages.length > 0
   const nothingIndexed = manuals.length === 0
 
+  // ── License gate ──────────────────────────────────────────────────────────
+  if (!licenseChecked) {
+    return (
+      <div className={`flex items-center justify-center h-screen ${theme === 'light' ? 'light' : ''}`} style={{ background: 'var(--bg-primary)' }}>
+        <div className="w-8 h-8 border-3 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }} />
+      </div>
+    )
+  }
+
+  if (licenseStatus?.status !== 'valid') {
+    return (
+      <div className={theme === 'light' ? 'light' : ''}>
+        <LicenseGate licenseData={licenseStatus} onActivated={checkLicense} />
+      </div>
+    )
+  }
+
   return (
     <div className={`flex flex-col h-screen overflow-hidden ${theme === 'light' ? 'light' : ''}`} style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <Header
@@ -405,6 +440,7 @@ export default function App() {
           bookmarks={bookmarks}
           onSelectBookmark={handleSelectBookmark}
           onRemoveBookmark={(bookmark) => toggleBookmark({ question: bookmark.question })}
+          licenseData={licenseStatus}
         />
 
         {/* Chat area */}

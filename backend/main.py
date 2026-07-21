@@ -3,6 +3,7 @@ main.py — FastAPI application entry point.
 """
 
 from contextlib import asynccontextmanager
+import sys
 import threading
 import logging as builtin_logging
 
@@ -21,6 +22,10 @@ from app.api.stream import router as stream_router
 from app.api.sources import router as sources_router
 from app.api.images import router as images_router
 from app.api.info import router as info_router
+from app.api.license import router as license_router
+from app.core.license import (
+    validate_license, set_current_license, get_current_license, LicenseError
+)
 from app.database.qdrant_store import get_qdrant_store
 from app.retrieval.bm25 import get_bm25_index
 from app.indexing.page_index import get_page_index
@@ -71,6 +76,15 @@ async def lifespan(app: FastAPI):
     builtin_logging.getLogger("transformers").setLevel(builtin_logging.WARNING)
     
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+
+    # 0. Validate License
+    try:
+        info = validate_license()
+        set_current_license(info)
+        logger.info(f"License OK — {info.customer}, expires {info.expiry_date}")
+    except LicenseError as e:
+        logger.warning(f"License validation failed: {e}")
+        # App still starts but API calls will be blocked by middleware
 
     # 1. Initialize Vector Store (Qdrant)
     store = get_qdrant_store()
@@ -134,7 +148,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── License Middleware ────────────────────────────────────────────────────────
+# Blocks all API requests (except license + health + frontend) if no valid license
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+
+class LicenseMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        # Always allow: license endpoints, health check, frontend assets
+        if (
+            path.startswith("/api/v1/license")
+            or path == "/api/v1/health"
+            or not path.startswith("/api/")
+        ):
+            return await call_next(request)
+        
+        # Check if we have a valid license
+        current = get_current_license()
+        if current is None:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "No valid license. Please activate your license.",
+                    "license_status": "not_activated",
+                },
+            )
+        if current.is_expired:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": f"License expired on {current.expiry_date}. Please renew.",
+                    "license_status": "expired",
+                },
+            )
+        return await call_next(request)
+
+app.add_middleware(LicenseMiddleware)
+
 # Routers
+app.include_router(license_router, prefix="/api/v1")
 app.include_router(manuals_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(stream_router, prefix="/api/v1")
@@ -163,7 +216,11 @@ async def health():
     )
 
 
-frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+# Resolve frontend dist — works in both dev and PyInstaller frozen mode
+if getattr(sys, 'frozen', False):
+    frontend_dist = Path(sys._MEIPASS) / "frontend" / "dist"
+else:
+    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 
 if frontend_dist.exists():
     # Serve all static assets from the dist folder (JS, CSS, images, logo.png)
@@ -196,69 +253,95 @@ else:
 if __name__ == "__main__":
     import multiprocessing
     import platform
+    import socket
     import subprocess
-    import threading
+    import sys
     import time
-    import requests
     import uvicorn
-    import webview
 
     # Freeze support for PyInstaller
     multiprocessing.freeze_support()
 
-    # Check and start Ollama
-    if platform.system() == "Windows":
+    # Determine base path (PyInstaller bundle or dev)
+    if getattr(sys, 'frozen', False):
+        BASE_DIR = Path(sys._MEIPASS)
+    else:
+        BASE_DIR = Path(__file__).parent
+
+    # ── Find a random free port ──────────────────────────────────────────────
+    def get_free_port():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('127.0.0.1', 0))
+            return s.getsockname()[1]
+
+    port = get_free_port()
+
+    # Write port to temp file so Tauri can read it
+    import os
+    port_file = Path(os.environ.get('TEMP', os.environ.get('TMPDIR', '/tmp'))) / 'isra_port.txt'
+    port_file.write_text(str(port))
+    logger.info(f"Backend port: {port} (written to {port_file})")
+
+    # ── Start Ollama ─────────────────────────────────────────────────────────
+    # Try bundled Ollama first (frozen exe), then system Ollama
+    ollama_exe = BASE_DIR / "ollama" / "ollama.exe"
+    ollama_models = BASE_DIR / "ollama" / "models"
+
+    if ollama_exe.exists():
+        # Use bundled Ollama with bundled models
+        os.environ["OLLAMA_MODELS"] = str(ollama_models)
+        logger.info(f"Starting bundled Ollama from: {ollama_exe}")
         try:
-            output = subprocess.check_output(
-                'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
-            ).decode()
-            if "ollama.exe" not in output:
-                logger.info("Ollama is not running. Starting ollama serve...")
+            if platform.system() == "Windows":
                 subprocess.Popen(
-                    ["ollama", "serve"], creationflags=subprocess.CREATE_NO_WINDOW
+                    [str(ollama_exe), "serve"],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
                 )
             else:
-                logger.info("Ollama is already running.")
-        except Exception as e:
-            logger.error(f"Failed to check or start Ollama: {e}")
-    elif platform.system() == "Darwin":  # macOS
-        try:
-            result = subprocess.run(
-                ["pgrep", "-x", "ollama"],
-                capture_output=True, text=True,
-            )
-            if result.returncode != 0:
-                logger.info("Ollama is not running on macOS. Starting ollama serve...")
                 subprocess.Popen(
-                    ["ollama", "serve"],
+                    [str(ollama_exe), "serve"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-                time.sleep(2)  # Give Ollama a moment to start
-            else:
-                logger.info("Ollama is already running on macOS.")
+            time.sleep(2)
         except Exception as e:
-            logger.warning(f"Could not check/start Ollama on macOS: {e}")
+            logger.error(f"Failed to start bundled Ollama: {e}")
+    else:
+        # Use system Ollama
+        if platform.system() == "Windows":
+            try:
+                output = subprocess.check_output(
+                    'tasklist /FI "IMAGENAME eq ollama.exe"', shell=True
+                ).decode()
+                if "ollama.exe" not in output:
+                    logger.info("Ollama is not running. Starting ollama serve...")
+                    subprocess.Popen(
+                        ["ollama", "serve"],
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
+                else:
+                    logger.info("Ollama is already running.")
+            except Exception as e:
+                logger.error(f"Failed to check or start Ollama: {e}")
+        elif platform.system() == "Darwin":  # macOS
+            try:
+                result = subprocess.run(
+                    ["pgrep", "-x", "ollama"],
+                    capture_output=True, text=True,
+                )
+                if result.returncode != 0:
+                    logger.info("Starting ollama serve on macOS...")
+                    subprocess.Popen(
+                        ["ollama", "serve"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    time.sleep(2)
+                else:
+                    logger.info("Ollama is already running on macOS.")
+            except Exception as e:
+                logger.warning(f"Could not check/start Ollama on macOS: {e}")
 
-    def run_server():
-        logger.info("Starting production server via Uvicorn...")
-        uvicorn.run("main:app", host=settings.host, port=settings.port, workers=1)
-
-    # Start FastAPI in a background thread
-    t = threading.Thread(target=run_server, daemon=True)
-    t.start()
-
-    # Wait for server to start
-    # WebView cannot resolve 0.0.0.0, so we use 127.0.0.1
-    server_url = f"http://127.0.0.1:{settings.port}"
-    for _ in range(30):
-        try:
-            if requests.get(server_url + "/api/v1/health").status_code == 200:
-                break
-        except Exception:
-            time.sleep(0.5)
-
-    # Create native desktop window
-    logger.info("Starting Desktop Window...")
-    webview.create_window(settings.app_name, server_url, width=1200, height=800)
-    webview.start(private_mode=False)
+    # ── Run headless server (Tauri handles the window) ───────────────────────
+    logger.info(f"Starting headless server on 127.0.0.1:{port}...")
+    uvicorn.run("main:app", host="127.0.0.1", port=port, workers=1)

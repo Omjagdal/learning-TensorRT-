@@ -178,3 +178,14 @@ export const getHealth = () => api.get('/health')
 
 export const getKnowledgeBase = () => api.get('/info/knowledge-base')
 
+// ── License ──────────────────────────────────────────────────────────────────
+
+export const getLicenseStatus = () => api.get('/license/status')
+export const getMachineId = () => api.get('/license/machine-id')
+export const activateLicense = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/license/activate', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}

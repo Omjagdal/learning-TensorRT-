@@ -1,0 +1,18 @@
+[package]
+name = "isra-chatbot"
+version = "2.0.0"
+description = "ISRA Chatbot - Industrial Manual AI Assistant"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["blocking"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

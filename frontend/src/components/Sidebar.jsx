@@ -283,6 +283,20 @@ export default function Sidebar({ manuals, selectedIds, onToggle, onRefresh, loa
             Searching {selectedIds.length} of {manuals.length} manual{manuals.length !== 1 ? 's' : ''}
           </div>
         )}
+        {/* License Info */}
+        {licenseData && licenseData.status === 'valid' && (
+          <div className="pt-2 mt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--text-muted)' }}>
+              Licensed to
+            </div>
+            <div className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }} title={licenseData.customer}>
+              {licenseData.customer}
+            </div>
+            <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Expires: {licenseData.expiry_date} ({licenseData.days_remaining} days)
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )
