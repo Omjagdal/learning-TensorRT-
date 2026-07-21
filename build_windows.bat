@@ -42,7 +42,7 @@ xcopy /E /I /Y "backend\dist\IsraChatbot" "%TARGET_DIR%"
 
 :: 4. Build Tauri App
 echo.
-echo [4/4] Building Tauri App (.msi)...
+echo [4/4] Building Tauri App (Setup .exe)...
 cd frontend
 call npm run tauri build
 if %errorlevel% neq 0 (
@@ -54,5 +54,5 @@ cd ..
 echo.
 echo ========================================================
 echo BUILD SUCCESSFUL!
-echo Installer is located at: frontend\src-tauri\target\release\bundle\msi\
+echo Installer is located at: frontend\src-tauri\target\release\bundle\nsis\
 echo ========================================================
