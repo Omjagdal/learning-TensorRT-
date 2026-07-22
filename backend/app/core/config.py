@@ -11,6 +11,8 @@ Supports the full Industrial Manual Chatbot stack:
   - Hierarchical PageIndex RAG
 """
 
+import os
+import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -93,11 +95,58 @@ class Settings(BaseSettings):
     def origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",")]
 
+    @property
+    def is_frozen(self) -> bool:
+        """True when running as a PyInstaller-bundled .exe."""
+        return getattr(sys, 'frozen', False)
+
+    @property
+    def bundle_dir(self) -> Path:
+        """Base directory of the bundled exe (where _internal/ lives), or CWD in dev."""
+        if self.is_frozen:
+            return Path(sys._MEIPASS)
+        return Path(__file__).parent.parent.parent  # backend/
+
+    @property
+    def data_dir(self) -> Path:
+        """
+        Persistent data directory — lives OUTSIDE the exe so it survives updates.
+        Frozen: %LOCALAPPDATA%/IsraChatbot/data/
+        Dev:    ./data/  (relative to backend/)
+        """
+        if self.is_frozen:
+            base = Path(os.environ.get('LOCALAPPDATA', '.')) / 'IsraChatbot' / 'data'
+        else:
+            base = Path("./data")
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
+    @property
+    def resolved_upload_dir(self) -> Path:
+        """Upload dir resolved to persistent data location."""
+        if self.is_frozen:
+            return self.data_dir / "manuals"
+        return self.upload_dir
+
+    @property
+    def resolved_qdrant_path(self) -> Path:
+        """Qdrant storage path resolved to persistent data location."""
+        if self.is_frozen:
+            return self.data_dir / "qdrant_storage"
+        return self.qdrant_embedded_path
+
+    @property
+    def resolved_logs_dir(self) -> Path:
+        """Logs directory resolved to persistent data location."""
+        if self.is_frozen:
+            return Path(os.environ.get('LOCALAPPDATA', '.')) / 'IsraChatbot' / 'logs'
+        return Path("logs")
+
     def ensure_dirs(self):
         """Create all required data directories on startup."""
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
-        if self.qdrant_use_embedded:
-            self.qdrant_embedded_path.mkdir(parents=True, exist_ok=True)
+        self.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
+        self.resolved_qdrant_path.mkdir(parents=True, exist_ok=True)
+        self.resolved_logs_dir.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache
@@ -105,3 +154,4 @@ def get_settings() -> Settings:
     s = Settings()
     s.ensure_dirs()
     return s
+

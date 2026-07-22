@@ -60,9 +60,9 @@ class QdrantStore:
             try:
                 if settings.qdrant_use_embedded:
                     logger.info(
-                        f"Connecting to embedded Qdrant at: {settings.qdrant_embedded_path}"
+                        f"Connecting to embedded Qdrant at: {settings.resolved_qdrant_path}"
                     )
-                    self._client = QdrantClient(path=str(settings.qdrant_embedded_path))
+                    self._client = QdrantClient(path=str(settings.resolved_qdrant_path))
                 else:
                     logger.info(
                         f"Connecting to Qdrant at: "

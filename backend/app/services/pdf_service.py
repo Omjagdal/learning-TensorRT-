@@ -31,7 +31,7 @@ from app.retrieval.bm25 import rebuild_bm25_index
 
 settings = get_settings()
 
-METADATA_FILE = settings.upload_dir / "metadata.json"
+METADATA_FILE = settings.resolved_upload_dir / "metadata.json"
 
 
 def _load_metadata() -> dict:
@@ -46,7 +46,7 @@ def _save_metadata(data: dict):
 
 def _get_images_dir(manual_id: str) -> Path:
     """Get the directory for extracted images."""
-    return settings.upload_dir / f"{manual_id}_images"
+    return settings.resolved_upload_dir / f"{manual_id}_images"
 
 
 def _build_page_text_map(pdf_path: Path) -> dict:
@@ -82,7 +82,7 @@ def ingest_pdf_generator(file_path: Path, original_filename: str, include_images
         else original_filename
     )
 
-    dest_path = settings.upload_dir / f"{manual_id}_{original_filename}"
+    dest_path = settings.resolved_upload_dir / f"{manual_id}_{original_filename}"
     if file_path.resolve() != dest_path.resolve():
         shutil.copy2(file_path, dest_path)
 
@@ -92,7 +92,7 @@ def ingest_pdf_generator(file_path: Path, original_filename: str, include_images
     page_text_map = _build_page_text_map(dest_path)
 
     yield {"stage": "Extracting Markdown & Images (Marker)", "progress": 30}
-    md_text, extracted_images = extract_with_marker(dest_path, settings.upload_dir)
+    md_text, extracted_images = extract_with_marker(dest_path, settings.resolved_upload_dir)
     image_filenames = [img.name for img in extracted_images]
 
     images_dir = _get_images_dir(manual_id)
@@ -105,7 +105,7 @@ def ingest_pdf_generator(file_path: Path, original_filename: str, include_images
             shutil.move(str(img), str(dest_img))
             image_paths.append(dest_img)
 
-    marker_out_dir = settings.upload_dir / f"marker_tmp_{dest_path.stem}"
+    marker_out_dir = settings.resolved_upload_dir / f"marker_tmp_{dest_path.stem}"
     shutil.rmtree(marker_out_dir, ignore_errors=True)
 
     yield {"stage": "Chunking text", "progress": 60}
@@ -117,7 +117,7 @@ def ingest_pdf_generator(file_path: Path, original_filename: str, include_images
         image_filenames=image_filenames,
     )
 
-    chunks_file = settings.upload_dir / f"{manual_id}_chunks.json"
+    chunks_file = settings.resolved_upload_dir / f"{manual_id}_chunks.json"
     chunks_file.write_text(json.dumps(chunks, indent=2))
 
     yield {"stage": "Embedding text chunks", "progress": 70}
@@ -183,7 +183,7 @@ def delete_manual(manual_id: str) -> Optional[dict]:
     meta = all_meta.pop(manual_id)
 
     # Remove files
-    for f in settings.upload_dir.glob(f"{manual_id}_*"):
+    for f in settings.resolved_upload_dir.glob(f"{manual_id}_*"):
         if f.is_dir():
             shutil.rmtree(f, ignore_errors=True)
         else:
@@ -211,7 +211,7 @@ def delete_manual(manual_id: str) -> Optional[dict]:
 
 def get_chunks_for_manual(manual_id: str) -> list[dict]:
     """Load raw chunk dicts from JSON."""
-    chunks_file = settings.upload_dir / f"{manual_id}_chunks.json"
+    chunks_file = settings.resolved_upload_dir / f"{manual_id}_chunks.json"
     if not chunks_file.exists():
         return []
     return json.loads(chunks_file.read_text())
@@ -267,7 +267,7 @@ def embed_marker_images(
                 "manual_name": manual_name,
                 "filename": original_filename,
                 "page": page_num,
-                "image_path": str(img_path.relative_to(settings.upload_dir)),
+                "image_path": str(img_path.relative_to(settings.resolved_upload_dir)),
                 "hierarchy_path": f"Page {page_num}",
             })
             captions.append(caption)
@@ -303,7 +303,7 @@ def get_image_path(image_rel_path: str) -> Optional[Path]:
     import os
 
     safe_path = os.path.normpath(f"/{image_rel_path}").lstrip("/")
-    image_path = settings.upload_dir / safe_path
+    image_path = settings.resolved_upload_dir / safe_path
     if image_path.exists():
         return image_path
     return None

@@ -25,7 +25,7 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # Persist hierarchy alongside manual metadata
-HIERARCHY_DIR = settings.upload_dir
+HIERARCHY_DIR = settings.resolved_upload_dir
 
 
 class HierarchicalPageIndex:
