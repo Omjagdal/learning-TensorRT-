@@ -13,7 +13,7 @@ const SUGGESTION_PROMPTS = [
   "What are the Do's and Don'ts?",
   'Explain vision teaching and parametrization steps.',
   'What are the limits for bead width?',
-  'How does the image recording sequence work?'
+  'How does the image recording sequence work?',
   'Describe the control architecture.',
   'What are the electrical connections with diagram?',
   'Provide hardware information about sensors and cables diagram.'
